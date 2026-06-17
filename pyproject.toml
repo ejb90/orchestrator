@@ -1,0 +1,19 @@
+[project]
+name = "orchestrator"
+version = "0.1.0"
+description = "Script-building workflow orchestrator for bash and Slurm"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+docs = [
+    "mkdocs>=1.6.0",
+]
+
+[project.scripts]
+orchestrator = "orchestrator.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
