@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 from orchestrator import compile_workflow  # noqa: E402
 
 EXAMPLES = {
+    "sensor_report": {},
     "diamond": {},
     "nested": {"start": 3},
     "branches": {},

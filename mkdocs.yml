@@ -31,6 +31,23 @@ theme:
         name: Switch to light mode
 plugins:
   - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            allow_inspection: false
+            docstring_style: google
+            members_order: source
+            filters: []
+            inherited_members: false
+            show_if_no_docstring: true
+            show_root_heading: true
+            show_root_full_path: true
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            show_source: true
 markdown_extensions:
   - admonition
   - attr_list
@@ -47,6 +64,14 @@ nav:
   - Home: index.md
   - Getting started:
       - Quick start: getting-started/quickstart.md
+      - Practical workflows: getting-started/practical-workflows.md
+  - Fundamentals:
+      - Overview: fundamentals/index.md
+      - Philosophy: fundamentals/philosophy.md
+      - Definitions and compilation: fundamentals/definitions.md
+      - Graphs and control flow: fundamentals/graphs.md
+      - Data and execution contracts: fundamentals/contracts.md
+      - Durable execution and recovery: fundamentals/durability.md
   - User guide:
       - Workflow combinations: guide/workflows.md
       - YAML definitions: guide/yaml.md
@@ -54,6 +79,21 @@ nav:
       - Script tasks and Slurm: guide/scripts.md
       - Tasks and artifacts: guide/tasks.md
       - Operations and recovery: guide/operations.md
+      - Execution directories: guide/directories.md
   - Reference:
+      - API reference:
+          - Overview: reference/api/index.md
+          - Workflow builders: reference/api/api.md
+          - Specification and compiler: reference/api/spec.md
+          - YAML loader: reference/api/yaml_loader.md
+          - Coordinator: reference/api/engine.md
+          - Execution backends: reference/api/backends.md
+          - Script rendering: reference/api/scripts.md
+          - Artifact lifecycle: reference/api/artifacts.md
+          - Worker runner: reference/api/runner.md
+          - Persistence: reference/api/storage.md
+          - Execution paths: reference/api/paths.md
+          - Terminal views: reference/api/presentation.md
+          - CLI: reference/api/cli.md
       - Architecture and status: reference/architecture.md
       - Development and CI: reference/development.md

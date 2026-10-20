@@ -18,6 +18,7 @@ from orchestrator import (
     load_yaml,
 )
 from orchestrator.cli import main
+from orchestrator.spec import VERSION
 
 
 def document():
@@ -68,7 +69,7 @@ def test_cli_script_validate_plan_render_run_resume(tmp_path):
     assert runner.invoke(main, ["validate", source]).exit_code == 0
     plan = runner.invoke(main, ["plan", source])
     assert plan.exit_code == 0, plan.output
-    assert json.loads(plan.output)["schema_version"] == 3
+    assert json.loads(plan.output)["schema_version"] == VERSION
     preview = tmp_path / "preview"
     result = runner.invoke(main, ["render", source, "--output", str(preview)])
     assert result.exit_code == 0, result.output

@@ -4,8 +4,8 @@
 
 This first pass assumes a per-user Linux coordinator on a persistent machine with durable
 local storage. Put `.orchestrator/` (or `--root`) on that machine's local filesystem. The
-run database and attempt files currently share that root; a separate shared artifact root
-is deferred. Do not put SQLite on an HPC shared/network filesystem. Local compute requires
+run database remains there; task/workflow [directory bases](directories.md) can place
+attempts on other local/shared storage. Do not put SQLite on an HPC shared/network filesystem. Local compute requires
 `--allow-local`, or `allow_local=True` through the Python API.
 
 Use a new run for new inputs or modified workflow definitions. Resume reads the original
@@ -14,6 +14,22 @@ Task and policy code must remain importable and compatible. Callable source hash
 package version pinning per run are not yet enforced; avoid changing their code during a run.
 
 ## CLI reference
+
+CLI help uses Rich Click with coloured options, readable argument descriptions, and
+command panels for workflow definitions, execution, and run inspection:
+
+```bash
+uv run orchestrator --help
+uv run orchestrator plan -h
+uv run orchestrator run --help
+```
+
+`-h` and `--help` work on the main command and subcommands. Colour is detected from the
+terminal; set `NO_COLOR=1` to disable it. Run states also use colour (green success,
+red failure, yellow waiting/cancellation, magenta uncertainty). The status text remains
+visible without colour. Trees and tables use coloured headings and node labels.
+JSON output, raw logs, and retained-script output remain suitable for piping; diagnostics
+and the run ID announcement stay separate from JSON stdout.
 
 Use `uv run orchestrator --help` and command-specific `--help`. Global `--root PATH` goes
 before the subcommand; its default is `.orchestrator` relative to the current directory.
@@ -86,9 +102,13 @@ ROOT/RUN_ID/
 retained script with `orchestrator script RUN_ID NODE_ID`; the command verifies its
 digest and metadata against the durable submission intent before printing it.
 
-The JSON snapshot in SQLite retains every attempt and committed decision. Events and the
-corresponding snapshot revision commit in one transaction. This is a small-run design:
-each transition rewrites the complete snapshot. It is not tuned for very large graphs.
+??? info "Theory: A transaction keeps history and state together"
+
+    The JSON snapshot in SQLite retains every attempt and committed decision. Events and the
+    corresponding snapshot revision commit in one transaction. This is a small-run design:
+    each transition rewrites the complete snapshot. It is not tuned for very large graphs.
+
+    Read more: [Transactions and external actions](../fundamentals/durability.md#transactions-have-a-boundary).
 Keep SQLite sidecar files with the database and use SQLite-aware backups, or back up while
 the coordinator is stopped. Do not copy only an active database file and assume it is complete.
 
@@ -101,10 +121,18 @@ Ctrl-C interrupts the coordinator without killing detached runners. A later `res
 3. Ingests matching result manifests or checks live process identity.
 4. Schedules newly eligible nodes, preserving completed nodes and existing attempts.
 
-PID alone is insufficient: boot ID and process start ticks must match. If a runner's
-result is available after acknowledgement was lost, resume can still accept it. Repeated
-resumes of a terminal run do not create more attempts. Results with mismatched run, node,
-or attempt identity are rejected and surfaced as uncertainty.
+Repeated resumes of a completed run do not create more attempts. A matching result
+can still be accepted after its launch acknowledgement was lost. Mismatched result
+identities are rejected and surfaced as uncertainty.
+
+??? info "Theory: A process ID is not a durable execution identity"
+
+    A PID may be reused after a process exits or a host restarts. Local observation also
+    checks boot identity and process start ticks. Results carry run, node, and attempt IDs
+    so a delayed or repeated report cannot authorize another execution or replace a newer
+    attempt's outputs.
+
+    Read more: [Identity and reconciliation](../fundamentals/durability.md#identity-makes-observations-meaningful).
 
 `cancel` leaves a durable request. An active coordinator skips unstarted ordinary work,
 sends SIGTERM to known active local process groups or calls `scancel` for acknowledged
@@ -124,6 +152,15 @@ short launch grace period, that attempt becomes `uncertain`; it is never automat
 Other independent work may continue. When only uncertain attempts remain active and no
 immediate scheduling progress is possible, the coordinator returns with run status `uncertain`.
 
+??? info "Theory: Why an unacknowledged submission is uncertain"
+
+    The coordinator can crash after a backend accepts work but before the acknowledgement
+    is committed. The database and scheduler do not share an atomic transaction. Repeating
+    the action without evidence could run the same side effects twice, so reconciliation
+    must establish the original attempt's outcome first.
+
+    Read more: [The submission crash window](../fundamentals/durability.md#transactions-have-a-boundary).
+
 Inspect the attempt, its stderr, and its manifest directory. Correct task/environment or
 artifact problems before deciding what to do. A later resume can accept a valid result that
 arrived late. This first pass has **no force-resubmit or manual resolution command**. If
@@ -137,13 +174,22 @@ descendants, allows terminal-triggered finalizers, and fails the scope. Inspect 
 the task traceback. CLI status and events are coordinator diagnostics; stdout/stderr are
 separate task logs. Rotating diagnostic log files and scheduler usage metrics are deferred.
 
+??? info "Theory: Cancellation is a request, not an observed outcome"
+
+    Work may finish before a signal or scheduler cancellation takes effect. The
+    coordinator records the observed result, while required finalizers remain eligible
+    under their trigger rules. Cleanup still needs a live coordinator or a later resume.
+
+    Read more: [Cancellation and finalization](../fundamentals/durability.md#cancellation-and-cleanup-also-need-evidence).
+
 ## Specification compatibility
 
-Workflow specifications use schema version 3, including captured script definitions.
+New workflow specifications use schema version 4, including captured scripts and directory settings.
+Version 3 runs without directory configuration remain supported in their original layout.
 Versions 1 and 2 are rejected on resume rather than silently reinterpreted. Retain the
 matching previous code to finish older runs, or start a new run; the SQLite storage
 schema remains version 1. Automatic schema migration is not implemented.
 
-YAML authoring has its own `version: 1`, which compiles to workflow schema v3. It does
+YAML authoring has its own `version: 1`, which compiles to workflow schema v4. It does
 not identify a v1 persisted run. Python and YAML runs share the same compatibility and
 recovery rules; see [YAML definitions](yaml.md) for supported authoring options.

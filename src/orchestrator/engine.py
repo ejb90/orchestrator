@@ -12,6 +12,7 @@ from typing import Any
 
 from .artifacts import validate_outputs
 from .backends import ExecutionBackend, RoutingBackend
+from .paths import attempt_directory, resolve_directories
 from .runner import atomic_json, load_callable
 from .spec import digest, validate
 from .storage import Store, ownership
@@ -55,6 +56,20 @@ def readiness(node: dict, states: dict) -> str:
 
 
 def create_run(spec: dict, root: Path, *, allow_local: bool = False, max_active: int = 4) -> Path:
+    """Persist a new run without starting task execution.
+
+    Args:
+        spec: Valid compiled workflow specification.
+        root: Durable local directory containing run subdirectories and SQLite databases.
+        allow_local: Explicit permission to run tasks on the coordinator host.
+        max_active: Positive global limit on concurrent active task attempts.
+
+    Returns:
+        Absolute directory of the new run, ready for Coordinator.run.
+
+    Raises:
+        ValueError: The specification, platform, resource limit, or local permission is invalid.
+    """
     validate(spec)
     tasks = [n["task"] for n in spec["nodes"].values() if n["kind"] == "task"]
     if not allow_local and (
@@ -75,6 +90,7 @@ def create_run(spec: dict, root: Path, *, allow_local: bool = False, max_active:
         status="running",
         spec=spec,
         spec_digest=digest(spec),
+        directory_bases=resolve_directories(spec, directory),
         max_active=max_active,
         closing={},
         decisions=[],
@@ -99,6 +115,16 @@ def create_run(spec: dict, root: Path, *, allow_local: bool = False, max_active:
 
 
 class Coordinator:
+    """Single-owner coordinator for a persisted run.
+
+    Args:
+        directory: Existing run directory created by create_run.
+        backend: Optional execution adapter; defaults to local/Slurm routing.
+
+    The constructor identifies the run but does not execute it. Call run to acquire
+    ownership, reconcile existing attempts, and schedule eligible work.
+    """
+
     def __init__(self, directory: Path, backend: ExecutionBackend | None = None):
         self.directory = directory.resolve()
         if not (self.directory / "state.sqlite").is_file():
@@ -132,7 +158,12 @@ class Coordinator:
                 continue
             attempt = state["attempts"][-1]
             directory = self.directory / attempt["path"]
-            observation = self.backend.observe(directory, attempt.get("job"))
+            try:
+                observation = self.backend.observe(directory, attempt.get("job"))
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                # Missing scratch storage is not evidence that a submission never happened.
+                attempt["observation_error"] = str(exc)
+                observation = "uncertain"
             if observation == "result":
                 try:
                     result = json.loads((directory / "result.json").read_text())
@@ -208,8 +239,13 @@ class Coordinator:
     def start(self, node_id: str, node: dict, inputs: dict) -> None:
         state = self.state["nodes"][node_id]
         attempt_id = uuid.uuid4().hex
-        relative = str(Path("attempts") / node_id / attempt_id)
-        directory = self.directory / relative
+        base = Path(self.state.get("directory_bases", {}).get(node_id, str(self.directory)))
+        directory = attempt_directory(base, self.directory, node_id, attempt_id)
+        relative = (
+            str(directory.relative_to(self.directory))
+            if directory.is_relative_to(self.directory)
+            else str(directory)
+        )
         directory.mkdir(parents=True)
         manifest = dict(
             run_id=self.state["run_id"],
@@ -225,7 +261,13 @@ class Coordinator:
         if script_record:
             manifest["execution_script"] = script_record
         atomic_json(directory / "input.json", manifest)
-        attempt = dict(id=attempt_id, path=relative, status="submission_pending", created_at=time.time())
+        attempt = dict(
+            id=attempt_id,
+            path=relative,
+            working_directory=str(directory),
+            status="submission_pending",
+            created_at=time.time(),
+        )
         if script_record:
             attempt["script"] = script_record
         state["attempts"].append(attempt)
@@ -337,12 +379,33 @@ class Coordinator:
                     self.finish_scope(node_id, node)
                 else:
                     self.transition(node_id, "succeeded", outputs=inputs)
-            except (ValueError, TypeError, KeyError, ImportError, AttributeError, RuntimeError) as exc:
+            except (
+                ValueError,
+                TypeError,
+                KeyError,
+                ImportError,
+                AttributeError,
+                RuntimeError,
+                OSError,
+            ) as exc:
                 self.transition(node_id, "failed", str(exc))
             changed = True
         return changed
 
     def run(self, poll_interval: float = 0.05) -> dict:
+        """Reconcile and schedule until the run is terminal or only uncertain attempts remain.
+
+        Args:
+            poll_interval: Seconds between coordinator polling passes.
+
+        Returns:
+            Persisted state snapshot with status, node attempts, and available outputs.
+            An uncertain run can be resumed later without blindly repeating submissions.
+
+        Raises:
+            RuntimeError: Another local coordinator already owns the run.
+            ValueError: The persisted specification is unsupported or its digest mismatches.
+        """
         with ownership(self.directory):
             self.store = Store(self.directory / "state.sqlite")
             try:
@@ -351,6 +414,13 @@ class Coordinator:
                 validate(self.spec)
                 if digest(self.spec) != self.state["spec_digest"]:
                     raise ValueError("Stored specification digest mismatch")
+                if self.spec["schema_version"] == 4:
+                    expected = {name for name, node in self.spec["nodes"].items() if node["kind"] == "task"}
+                    bases = self.state.get("directory_bases", {})
+                    if set(bases) != expected or any(
+                        not isinstance(path, str) or not Path(path).is_absolute() for path in bases.values()
+                    ):
+                        raise ValueError("Stored task directory bases are missing or invalid")
                 if self.state["status"] in TERMINAL:
                     return self.state
                 self.state["status"] = "running"

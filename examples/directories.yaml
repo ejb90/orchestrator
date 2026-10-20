@@ -1,0 +1,27 @@
+version: 1
+name: directories
+directory:
+  path: workspace
+  relative_to: root
+tasks:
+  record_location:
+    directory: child
+    script:
+      body: pwd > cwd.txt
+    outputs:
+      - name: cwd
+        kind: file
+        source: cwd.txt
+nodes:
+  parent_relative:
+    task: record_location
+  root_relative:
+    task: record_location
+    directory: {path: scratch, relative_to: root}
+  absolute:
+    task: record_location
+    directory: /dev/shm/orchestrator-example
+outputs:
+  parent_cwd: {$ref: parent_relative.cwd}
+  root_cwd: {$ref: root_relative.cwd}
+  absolute_cwd: {$ref: absolute.cwd}

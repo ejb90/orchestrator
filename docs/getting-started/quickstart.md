@@ -1,123 +1,130 @@
-# Quick start
+# Quick start: turn sensor readings into a report
 
-Orchestrator requires Python 3.12+ and Linux. The examples below execute locally.
-For experimental Slurm submission, see [script tasks](../guide/scripts.md). Run these commands from the repository root:
+This workflow copies a CSV into an isolated working directory, removes rejected readings,
+and passes the cleaned file to a second task that writes a temperature report. Everything
+runs locally using Bash, `awk`, and standard Linux commands; no cluster or application
+packages are needed.
 
-```bash
-uv sync
-uv run orchestrator validate examples/diamond.py
-uv run orchestrator plan examples/diamond.py
-uv run orchestrator plan examples/diamond.py --format table
-uv run orchestrator plan examples/diamond.py --tree
-uv run orchestrator run examples/diamond.py --allow-local
-```
+## Install and inspect
 
-The diamond workflow returns `{"value": 12}`. `--allow-local` explicitly permits compute
-on the coordinator host; `--max-active` defaults to four concurrent tasks.
-
-## Write a workflow
-
-Choose YAML for a flat static graph, or Python for the full composition API, including
-nested workflows, branches, and bounded iteration. Both use the same execution engine.
-
-### YAML
-
-Run the bundled script example:
+Requires Python 3.12+ and Linux. Run these commands from the repository root:
 
 ```bash
-uv run orchestrator validate examples/script.yaml
-uv run orchestrator plan examples/script.yaml
-uv run orchestrator plan examples/script.yaml --format table
-uv run orchestrator render examples/script.yaml --output yaml-preview/
-uv run orchestrator run examples/script.yaml --allow-local
+uv sync --locked --group dev
+uv run orchestrator validate examples/sensor_report.yaml
+uv run orchestrator plan examples/sensor_report.yaml --tree
 ```
 
-It creates a greeting report and exposes its artifact reference as the workflow's
-`report` output. `render` creates a new preview directory without running the task.
-See [YAML definitions](../guide/yaml.md) to write your own `.yaml` or `.yml` file and
-understand `tasks`, `nodes`, and `{$ref: step.output}` bindings.
-
-### Python
-
-Create an importable `my_tasks.py` alongside your workflow:
-
-```python
-def double(value):
-    return {"value": value * 2}
+```text
+sensor_report — prerequisites
+└── sensor_report/report (task)
+    └── sensor_report/clean (task)
 ```
 
-Export `workflow` from `workflow.py`:
+The `report` step consumes the `clean` step's output. Use `--format table` instead of
+`--tree` for execution settings and scope barriers, or omit output options for JSON.
 
-```python
-from orchestrator import Task, TaskInput, TaskOutput, Workflow
+The input is `examples/data/sensor_readings.csv`: seven readings, including one marked
+`bad` and one marked `missing`. The shell scripts live in `examples/jobs/`. The YAML
+file describes how to stage files and connect the two steps.
 
-double = Task(
-    python="my_tasks:double", inputs=[TaskInput("value")], outputs=[TaskOutput("value")]
-)
-workflow = Workflow("demo")
-a = workflow.add("first", double, inputs={"value": 3})
-b = workflow.add("second", double, inputs={"value": a.out("value")})
-workflow.expose(value=b.out("value"))
-```
+??? info "Theory: Why two steps and an output reference?"
+
+    The cleaner and reporter have separate execution and output contracts. The
+    reference supplies a file and declares a prerequisite, rather than relying on the
+    order of entries in the definition. Each step receives its own staged inputs and
+    attempt history.
+
+    Read more: [The fundamental model](../fundamentals/index.md).
+
+## Run and read the report
 
 ```bash
-uv run orchestrator run workflow.py --allow-local
+uv run orchestrator run examples/sensor_report.yaml --allow-local
 ```
 
-The result is `12`. Output references automatically add dependencies. Reusing a task
-creates separate invocations and isolated attempts.
+`--allow-local` explicitly permits compute on this host. The command prints a run ID,
+the step states, and absolute paths to the `clean_csv` and `report` output artifacts.
+Each step gets its own script, input copy, logs, and result manifest under
+`.orchestrator/RUN_ID/`. The original CSV is left unchanged.
 
-## Try other compositions
+Replace `RUN_ID` with the printed identifier:
 
 ```bash
-uv run orchestrator run examples/nested.py --inputs '{"start": 3}' --allow-local
-uv run orchestrator run examples/branches.py --allow-local
-uv run orchestrator run examples/convergence.py --allow-local
-uv run orchestrator run examples/command.py --allow-local
-uv run orchestrator run examples/staging.py --allow-local
-uv run orchestrator run examples/script.py --allow-local
+uv run orchestrator logs RUN_ID sensor_report/report
 ```
 
-The [DAG gallery](../guide/dags.md) shows each example, including downloadable Graphviz
-sources. The [workflow guide](../guide/workflows.md) explains how to combine these patterns.
+```text
+Temperature report
+Accepted readings: 5
+Mean temperature: 20.6 C
+Range: 18.5 to 23.0 C
+```
 
-## Inspect a run
+The same text is saved at `report.path` in the run's outputs. The cleaned CSV contains
+its header and five accepted rows. The rejected 99°C reading and the missing reading
+are excluded before calculating the statistics.
 
-Replace `RUN_ID` with the identifier printed by `run`:
+## Inspect what ran
 
 ```bash
 uv run orchestrator status RUN_ID
-uv run orchestrator logs RUN_ID diamond/left
+uv run orchestrator inspect RUN_ID sensor_report/clean
+uv run orchestrator script RUN_ID sensor_report/report
 uv run orchestrator events RUN_ID --json
 uv run orchestrator resume RUN_ID
-uv run orchestrator cancel RUN_ID
 ```
 
-For the YAML script example, use the node ID `yaml_report/write` with `inspect`, `logs`,
-and `script`:
+`script` verifies and prints the exact retained Bash job file. Sources are captured
+during compilation, so later edits do not change a retry or resumed run. Resuming this
+completed workflow preserves its results without executing the steps again.
+
+To preview scripts before running, choose a new output directory:
 
 ```bash
-uv run orchestrator inspect RUN_ID yaml_report/write
-uv run orchestrator script RUN_ID yaml_report/write
-uv run orchestrator logs RUN_ID yaml_report/write
+uv run orchestrator render examples/sensor_report.yaml --output sensor-preview/
 ```
 
-`script` verifies and prints the exact retained job file for that attempt. Script
-sources are captured during compilation, so later source edits do not change a retry.
+Preview files are illustrative rather than managed executable attempts. Use `--help`
+or `-h` for colourful command help.
 
-By default, runs are stored in `.orchestrator/`. Put `--root PATH` before the subcommand
-to choose another durable local directory. See [operations and recovery](../guide/operations.md)
-for cancellation, restart semantics, and uncertainty handling.
+## Use Python instead of YAML
 
-## Build and browse the documentation
+The equivalent Python workflow reads the same dataset and runs the same shell scripts:
 
 ```bash
-uv run mkdocs serve
-uv run mkdocs build --strict
+uv run orchestrator plan examples/sensor_report.py --tree
+uv run orchestrator run examples/sensor_report.py --allow-local
 ```
 
-`serve` starts the local documentation preview; `build` writes a static site to `site/`.
-The site uses Material for MkDocs, with light/dark themes, syntax-highlighted code,
-copy buttons, search, and section navigation. Diagram assets are committed, so no diagram
-plugin or Graphviz installation is required to build it.
-See [development and CI](../reference/development.md) for the automated checks.
+Choose YAML for static definitions or Python for the full composition API. The
+[practical walkthrough](practical-workflows.md) explains both definitions and their bindings.
+
+## Summarize an application log
+
+A second concrete example counts messages in `examples/data/application.log`:
+
+```bash
+uv run orchestrator run examples/log_summary.yaml --allow-local
+uv run orchestrator logs RUN_ID log_summary/summarize
+```
+
+Use the new run ID. The report contains six entries, one warning, and two errors.
+These are messages found in the input log; the summarization task itself succeeds.
+
+## Choose storage and go further
+
+Global `--root PATH`, placed before the command, chooses durable coordinator storage.
+Keep using that root for inspection. Task/workflow `directory` settings separately
+choose execution bases relative to the run root, relative to their parent workflow,
+or at absolute paths such as `/dev/shm/project`. All retain isolated attempts; see
+[execution directories](../guide/directories.md) for examples and recovery behavior.
+
+- [Fundamentals](../fundamentals/index.md): philosophy, graphs, contracts, and recovery.
+- [Practical workflows](practical-workflows.md): source files, task definitions, and output bindings.
+- [YAML definitions](../guide/yaml.md): supported fields and validation.
+- [Workflow composition](../guide/workflows.md): small examples isolating parallelism, nesting,
+  branching, iteration, retries, and finalizers.
+- [Workflow DAGs](../guide/dags.md): diagrams and terminal views of the composition examples.
+- [Operations](../guide/operations.md): concurrency, cancellation, and restart behavior.
+- [Development and CI](../reference/development.md): docs preview, checks, and API reference.

@@ -40,18 +40,34 @@ uv run orchestrator run workflow.yaml --allow-local
 
 The repository includes a runnable example at `examples/script.yaml`.
 `resume` uses the stored specification; it does not reload the YAML file. Start a new
-run to use edits. YAML format `version: 1` is independent of compiled workflow schema v3.
+run to use edits. YAML format `version: 1` is independent of compiled workflow schema v4.
 `plan --format table` shows named steps, dependencies, and execution settings in the
 terminal; the default plan output remains JSON. See the [terminal view](dags.md#terminal-dependency-table).
 `plan --tree` instead shows prerequisites as branches, with shared dependencies marked.
 
+??? info "Theory: One compiler, two authoring frontends"
+
+    YAML describes data; the loader constructs the same builders as the Python API.
+    Both feed one validation/compiler pipeline, so a YAML definition does not need a second
+    scheduler or a separate interpretation of dependencies. Compilation precedes rendering
+    of a real attempt with its identity and working paths.
+
+    Read more: [Authoring and compilation](../fundamentals/definitions.md#author-compile-render-execute).
+
 ## Tasks, steps, and workflow outputs
 
-`tasks` defines reusable work: commands, environment, input/output contracts, and defaults.
-`nodes` places that work in the workflow as named steps (also called invocations). A task
-definition does not run until a node uses it. Each step has its own inputs, dependencies,
-resource overrides, execution history, and isolated attempts; retries add attempts to
-that same step.
+`tasks` defines reusable work and its contracts; `nodes` creates named steps using
+those definitions. Each step can supply its own bindings and overrides.
+
+??? info "Theory: Reuse does not share execution identity"
+
+    `tasks` defines reusable work: commands, environment, input/output contracts, and defaults.
+    `nodes` places that work in the workflow as named steps (also called invocations). A task
+    definition does not run until a node uses it. Each step has its own inputs, dependencies,
+    resource overrides, execution history, and isolated attempts; retries add attempts to
+    that same step.
+
+    Read more: [Definitions, steps, runs, and attempts](../fundamentals/definitions.md#a-definition-is-not-an-execution).
 
 In the example above, `write_report` is the task definition and `write` is the step that
 uses it. The task declares an output named `report`. `{$ref: write.report}` means
@@ -81,9 +97,9 @@ directory, so their relative `results/report.txt` paths are distinct. Add
 
 | Location | Supported fields |
 | --- | --- |
-| Workflow | `version` (required: `1`), `name` (required), `inputs`, `resources`, `max_active`, `tasks`, `nodes` (required), `outputs` |
-| Task definition in `tasks` | Exactly one of `script`, `command`, `python`; plus `inputs`, `outputs`, `env`, `resources`, `retry` |
-| Node in `nodes` | `task` (required task name), `inputs`, `after`, `resources`, `trigger`, `finalizer` |
+| Workflow | `version` (required: `1`), `name` (required), `inputs`, `resources`, `max_active`, `directory`, `tasks`, `nodes` (required), `outputs` |
+| Task definition in `tasks` | Exactly one of `script`, `command`, `python`; plus `inputs`, `outputs`, `env`, `resources`, `retry`, `directory` |
+| Node in `nodes` | `task` (required task name), `inputs`, `after`, `resources`, `trigger`, `finalizer`, `directory` |
 | Resources | `cpus`, `timeout_seconds` |
 | Retry | `max_attempts`, `backoff_seconds`, `categories` |
 | Script | `body` or `path`, `shell`, `interpreter`, `setup`, `inherit_env`, `backend`, `slurm` |
@@ -136,6 +152,10 @@ command sequences. `script` supports the same [shell and Slurm settings](scripts
 as the Python API, including experimental Slurm placement.
 
 ## Paths and validation
+
+`directory` accepts a path string or `{path: scratch, relative_to: root}`. Absolute,
+run-root-relative, and parent-workflow-relative bases retain isolated attempts. See
+[execution directories](directories.md) for inheritance, retries, and resume semantics.
 
 Relative `script.path` values and literal artifact input source paths in the YAML file
 resolve against its containing directory. Output source paths and relative staging or

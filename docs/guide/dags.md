@@ -5,11 +5,18 @@ blue nodes are executable tasks, yellow nodes are coordinator decisions, grey no
 logical workflow boundaries, and green nodes are required finalizers. Scope boundaries
 and decisions do not consume workers.
 
-Redundant transitive edges are omitted for readability in both the DOT source and SVG
-preview. This preserves dependency reachability, but the diagrams are **not execution
-specifications**: direct trigger dependencies, branch guards, and early-completion rules
-still come from the original compiled plan. Use `orchestrator plan` to see every dependency.
-The diagrams show possible work, not the outcome of a particular run.
+The diagrams show possible work, not the outcome of a particular run. Use the table
+or JSON plan for every direct dependency and scope barrier.
+
+??? info "Theory: A dependency graph is not always a tree"
+
+    Redundant transitive edges are omitted for readability in both the DOT source and SVG
+    preview. This preserves dependency reachability, but the diagrams are **not execution
+    specifications**: direct trigger dependencies, branch guards, and early-completion rules
+    still come from the original compiled plan. Use `orchestrator plan` to see every dependency.
+    The diagrams show possible work, not the outcome of a particular run.
+
+    Read more: [DAGs, shared prerequisites, and graph views](../fundamentals/graphs.md#a-tree-is-a-view-of-a-dag).
 
 ## Terminal dependency tree
 
@@ -65,6 +72,19 @@ jobs. Python definition files are still loaded as trusted Python, as with other 
 `plan FILE` continues to emit the full JSON specification by default; use
 `--format json` explicitly for machine-readable output. Use `status RUN_ID` for a
 run's current states and attempt counts.
+
+## Practical example: sensor temperature report
+
+`examples/sensor_report.py` and `examples/sensor_report.yaml` clean a CSV and pass the
+accepted readings to a temperature-report task. The [quick start](../getting-started/quickstart.md)
+and [practical walkthrough](../getting-started/practical-workflows.md) explain the data,
+scripts, and expected report. Both formats compile to the same graph:
+
+![Sensor report workflow](../assets/dags/sensor_report.svg)
+
+[Graphviz DOT source](../assets/dags/sensor_report.dot)
+
+The smaller examples below isolate individual composition and control concepts.
 
 ## Diamond: parallel work with a join
 

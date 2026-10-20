@@ -1,12 +1,16 @@
 # Architecture and first-pass status
 
+For the design philosophy and basic computer science, start with
+[Fundamentals](../fundamentals/index.md). This reference records the implemented module
+boundaries, state transitions, deployment assumptions, and remaining work.
+
 ## Deployment and reuse decision
 
 The working baseline is one Linux coordinator per run, per-user ownership, local SQLite,
 local attempt storage, and explicitly permitted local subprocess compute. It targets small
 and medium static graphs whose task runtime dominates scheduling overhead. This is a
 provisional development deployment, not a claim about the eventual cluster environment.
-The database cannot yet be separated from the artifact root.
+Task/workflow directory bases can place attempts outside the durable local database root; see [execution directories](../guide/directories.md).
 
 The initial backend is direct subprocess execution. Parsl already provides dataflow
 scheduling and reusable execution providers; its HighThroughputExecutor uses pilot
@@ -27,7 +31,7 @@ Script tasks now have explicit local or experimental Slurm placement. See the
 | Module | Responsibility |
 | --- | --- |
 | `api.py` | Reusable task/workflow definitions, invocation handles, bindings, finite loop helper |
-| `spec.py` | Schema v3, JSON serialization/digest, validation, deterministic scope expansion |
+| `spec.py` | Schema v4, JSON serialization/digest, validation, deterministic scope expansion |
 | `yaml_loader.py` | Version-1 static YAML definitions translated into the Python builders and common compiler |
 | `engine.py` | Pure readiness rules, decisions, scope completion, retry/cancellation/recovery loop |
 | `backends.py` | Execution protocol, local adapter, and experimental Slurm routing |
@@ -35,21 +39,32 @@ Script tasks now have explicit local or experimental Slurm placement. See the
 | `runner.py` | Import/command invocation, process identity, staged manifests, atomic reports |
 | `artifacts.py` | Object contracts at runtime: copy/link inputs, output validation and collection |
 | `storage.py` | SQLite snapshot/events, revision guard, local exclusive ownership |
+| `paths.py` | Absolute/root/parent execution bases, pinned run mappings, isolated attempt locations |
 | `cli.py` | Python/YAML definition loading, user commands, Rich output, machine-readable inspection |
 | `presentation.py` | Static Rich dependency tables and prerequisite trees over the compiled specification |
 
-The compiler expands child invocations and keeps their enter/exit scope barriers. Data
-references add dependencies. A workflow exit waits on direct task and child-workflow exits,
-which transitively wait for their descendants. Runtime policies see only their resolved,
-declared inputs. Decisions record input evidence and the preceding snapshot revision.
-The coordinator owns all orchestration writes; runners only publish filesystem observations.
+??? info "Theory: Graph scopes and a single orchestration authority"
 
-Storage uses one versioned JSON snapshot row plus an append-only events table. Node state,
-attempts, action intents, decisions, and outputs are distinct records within that snapshot,
-not separate relational tables yet. Snapshot updates and events commit together with a
-revision check. Task contracts use schema v3; the database schema is still v1. Unknown specification or database versions are rejected. There are no
-schema migrations yet. A local file lock prevents simultaneous coordinators; this is not
-a multi-host lease or fencing solution.
+    The compiler expands child invocations and keeps their enter/exit scope barriers. Data
+    references add dependencies. A workflow exit waits on direct task and child-workflow exits,
+    which transitively wait for their descendants. Runtime policies see only their resolved,
+    declared inputs. Decisions record input evidence and the preceding snapshot revision.
+    The coordinator owns all orchestration writes; runners only publish filesystem observations.
+
+    Read more: [Policy, mechanism, and evidence](../fundamentals/philosophy.md#separate-policy-from-mechanism).
+
+Storage uses a versioned JSON snapshot plus append-only events. Workflow schema v4 and
+legacy v3 runs without directory configuration are supported; SQLite remains schema v1.
+Other unsupported versions are rejected. There are no automatic schema migrations.
+
+??? info "Theory: Transactional history and local ownership"
+
+    Node states, attempts, intents, and decisions are separate records within one
+    snapshot rather than separate relational tables. Snapshot updates and events commit
+    together with a revision check. A local file lock prevents simultaneous coordinators
+    for the supported host; it is not a distributed lease or fencing protocol.
+
+    Read more: [State transitions and transaction boundaries](../fundamentals/durability.md#transactions-have-a-boundary).
 
 ## Transition semantics
 
@@ -92,7 +107,7 @@ negotiation, and a pluggable storage protocol are still follow-up work.
 | 2 Local execution | Real subprocesses, manifests, output validation, dependency failure handling | Broader resource enforcement and non-Linux support |
 | 3 Durable coordination | Transactional snapshots/events, intents, ownership, retry isolation, identity-based recovery | Normalized storage interface, manual uncertainty resolution, stronger host-loss durability |
 | 4 Controls | Branch joins, bounded single-task iteration, successful scoped early finish, required task finalizers | General iteration-body convenience API, optional cancellation of draining scope work |
-| 5 Slurm | Retained scripts, explicit placement, sbatch/squeue/scancel adapter, mocked tests | Site profiles, accounting, lost-ack job discovery, separate storage roots, real cluster smoke test |
+| 5 Slurm | Retained scripts, explicit placement, sbatch/squeue/scancel adapter, mocked tests | Site profiles, accounting, lost-ack job discovery, real cluster smoke test |
 | 6 Usability | CLI, runnable examples, MkDocs, tests, locked dependencies, Ruff and mypy, GitHub Actions checks | Release packaging qualification, full code/environment provenance, cluster operations guide |
 
 No dynamic graph expansion, caching, pilot allocations, arrays, MPI/GPU
@@ -103,7 +118,7 @@ the remaining milestones are implemented.
 
 YAML format v1 covers flat static graphs with reusable tasks, bindings, dependencies,
 resources, retries, and finalizers. Nested workflows and conditional control remain
-available through Python. YAML uses the same compiled schema v3 and stored-run protocol.
+available through Python. YAML uses the same compiled schema v4 and stored-run protocol.
 
 ## Verification and next acceptance steps
 

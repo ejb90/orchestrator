@@ -1,6 +1,7 @@
 """Python-first, durable local workflow orchestration."""
 
 from .api import (
+    Directory,
     Handle,
     Input,
     Ref,
@@ -20,6 +21,7 @@ from .yaml_loader import load_yaml
 
 __all__ = [
     "Coordinator",
+    "Directory",
     "Handle",
     "Input",
     "Ref",

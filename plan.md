@@ -16,7 +16,7 @@ The initial implementation prioritizes clear semantics, restart recovery, and ex
 
 This document records the accepted architectural direction and provides implementation work packages. Proposed defaults are identified where deployment details still require validation.
 
-Implementation status (20 October 2026): `Task(script=Script(...))` now supports captured inline/file sources, Bash/Zsh/Fish rendering, environment setup, per-attempt retained job files and hashes, the existing staging/validation lifecycle, and CLI render/script inspection. Schema v3 records script definitions. An experimental shared-filesystem Slurm adapter submits the retained file and observes/cancels jobs; scheduler tests are mocked, not cluster-qualified. Argument-list and Python tasks remain supported. Site profiles, hierarchical scheduler overrides, accounting/lost-ack discovery, separate storage roots, dependency snapshots, and real cluster qualification remain pending. Fish uses explicit authored failure checks because it has no Bash-style errexit; see `docs/guide/scripts.md` for implemented semantics and limits. The sections below retain the broader target design where these items are not yet implemented.
+Implementation status (20 October 2026): `Task(script=Script(...))` now supports captured inline/file sources, Bash/Zsh/Fish rendering, environment setup, per-attempt retained job files and hashes, the existing staging/validation lifecycle, and CLI render/script inspection. Schema v4 records script and directory definitions; v3 runs without directory configuration remain supported. An experimental shared-filesystem Slurm adapter submits the retained file and observes/cancels jobs; scheduler tests are mocked, not cluster-qualified. Argument-list and Python tasks remain supported. Site profiles, hierarchical scheduler overrides, accounting/lost-ack discovery, dependency snapshots, and real cluster qualification remain pending. Fish uses explicit authored failure checks because it has no Bash-style errexit; see `docs/guide/scripts.md` for implemented semantics and limits. The sections below retain the broader target design where these items are not yet implemented.
 
 Documentation status (20 October 2026): the user guides now cover Python and YAML
 entry points, reusable task definitions versus named steps, workflow output bindings,
@@ -468,6 +468,102 @@ branch selection, and bounded iteration remain deferred; use the Python API for 
 Verification: the full local test suite, Ruff lint/format checks, mypy, the strict MkDocs
 build, and offline lockfile consistency checks pass. PyYAML is now an explicit runtime
 dependency, using its existing locked version rather than relying on the documentation tools.
+
+### Generated API reference update (20 October 2026)
+
+MkDocs now enables mkdocstrings with its Python handler, installed and locked as a
+development dependency. Eleven module reference pages cover builders, specification,
+YAML loading, coordination, backends, scripts, artifacts, runner, storage, presentation,
+and CLI. The pages render classes, functions, methods, constructor signatures, type
+annotations, docstrings, and expandable source; private and undocumented members remain
+visible. Constructors are merged into class entries. Main public builders and execution
+entry points now have explanatory Google-style docstrings.
+
+Source collection uses static analysis with runtime inspection disabled. New members in
+documented modules appear automatically; adding a module requires its reference page
+and navigation entry. The README, documentation home, and developer guide link the API
+reference and explain docstrings, cross-references, and module additions. The existing
+strict documentation CI check builds these pages with the locked plugin dependencies.
+Generated HTML verification confirms all 119 declared class/function/method anchors
+across the eleven modules, excluding constructor anchors merged into class documentation.
+Verification passed: 130 tests, Ruff lint/format checks, mypy, the strict MkDocs build,
+and offline lockfile consistency. The generated site is rebuilt under `site/`.
+
+### Rich Click presentation update (20 October 2026)
+
+The CLI now uses Rich Click, installed and locked as a runtime dependency. Help groups
+commands into workflow definitions, execution, and run inspection, describes positional
+arguments and options, and supports both `-h` and `--help`. Options and command names
+are coloured; errors use Rich panels. Run states, tree nodes, and table headings also
+have semantic colours while retaining explicit text labels. Terminal colour detection
+and `NO_COLOR` are respected. JSON, raw task logs, and retained script bytes continue
+through plain output paths, preserving piping and machine-readable interfaces.
+
+README, operations, and development documentation describe the presentation. Coverage
+checks help for every subcommand, colour/no-colour in fresh CLI processes, JSON output
+under forced colour, and unchanged usage-error exit codes.
+Verification passed: 133 tests, Ruff lint/format checks, mypy, the strict MkDocs/API
+reference build, and offline lockfile consistency. Colour checks use a colour-capable
+terminal environment; JSON output stays free of ANSI codes even with forced colour.
+
+### Practical examples and execution directories update (20 October 2026)
+
+Getting started now follows concrete file-processing workflows: equivalent Python/YAML
+sensor-report definitions clean seven fixture readings down to five and report a 20.6°C
+mean and 18.5–23.0°C range; a YAML log summary reports six messages, one warning, and two
+errors. The README, quick start, practical walkthrough, and landing-page DAG use these
+examples. Arithmetic/greeting examples remain in the detailed composition and contract guides.
+
+Workflow/task/step `directory` settings now select absolute, run-root-relative, or
+parent-workflow-relative execution bases. Python exposes Directory and string shorthand;
+YAML accepts strings or path/relative_to mappings. Root means `--root/RUN_ID`; parent
+means the enclosing logical workflow's resolved base. Workflow invocation overrides,
+task defaults, and inherited bases support nested directory chains. Exact shared working
+directories are not supported: each attempt remains isolated. External bases add a run
+namespace, and SQLite/ownership/cancellation metadata stays in the durable run root.
+
+Task bases are resolved and persisted at run creation. Submission intent stores each
+attempt's exact path before execution; retries retain the base and captured source but
+create fresh attempt paths and scripts. Resume reconciles the original path without
+re-rendering or relocating submitted work. Missing scratch storage is retained as
+uncertainty, never implicit permission to resubmit. Control eligibility is unchanged:
+skipped branches and later iterations do not create attempt directories, while required
+finalizers remain eligible after early completion or cancellation. Arbitrary dynamic graph
+expansion, directory interpolation, and force-resubmit remain unsupported.
+
+New compiled specifications are schema v4. Existing v3 runs without directory settings
+remain resumable in their original layout; YAML authoring and SQLite remain version 1.
+The API reference now includes execution-path resolution and Directory. This supersedes
+earlier notes deferring all separation of coordinator and attempt storage; shared Slurm
+storage still needs site qualification, and automatic remote transport remains deferred.
+
+Verification covers all three directory anchors and overrides, Python/YAML example
+equivalence and real reports, retries with frozen sources, lost acknowledgements,
+vanished scratch, retained Slurm paths, legacy v3 resume, directory-creation failures,
+branches, convergence, and cancellation/finalizers. Full local suite: 156 tests pass,
+along with Ruff lint/format, mypy, and the strict documentation/API build.
+
+### Fundamentals and progressive theory documentation (20 October 2026)
+
+Documentation now separates practical onboarding, fundamental theory, user recipes, and
+implementation/API reference. A top-level Fundamentals section covers philosophy,
+definitions/steps/runs/attempts, compilation and versioned specifications, DAGs and
+partial orders, readiness and scoped controls, data/output contracts, execution namespaces,
+state machines, transaction boundaries, identity, uncertain submission, retries, and
+idempotence. It uses the concrete sensor report and small graph examples, and distinguishes
+current capabilities from deferred dynamic/distributed execution features.
+
+Relevant explanations in getting started, every user-guide topic, and reference overview
+pages now use closed-by-default Material details boxes labelled Theory, with links to
+the corresponding fundamentals. Longer conceptual paragraphs are moved into those boxes;
+commands, configuration semantics, essential constraints, and operational warnings remain
+visible. Existing admonition/details extensions provide this without another dependency.
+The documentation home, navigation, and README link the new learning path; architecture
+reference retains exact transitions, module boundaries, and implementation status.
+Verification: the strict MkDocs/API build passes. Rendered HTML checks confirm six
+fundamentals pages, 26 closed-by-default Theory boxes, valid internal link fragments,
+contextual theory in every user-guide topic, correct navigation order, and preserved
+visible operational warnings. This change affects documentation only.
 
 ## 15. Verification strategy
 

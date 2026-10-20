@@ -1,0 +1,8 @@
+station,temperature_c,status
+north,18.5,ok
+north,19.5,ok
+south,22.0,ok
+south,99.0,bad
+north,20.0,ok
+south,23.0,ok
+north,,missing

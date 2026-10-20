@@ -10,7 +10,19 @@ from typing import Any, get_args, get_origin, get_type_hints
 
 import yaml  # type: ignore[import-untyped]
 
-from .api import Handle, Input, Ref, Resources, Retry, Script, Task, TaskInput, TaskOutput, Workflow
+from .api import (
+    Directory,
+    Handle,
+    Input,
+    Ref,
+    Resources,
+    Retry,
+    Script,
+    Task,
+    TaskInput,
+    TaskOutput,
+    Workflow,
+)
 from .spec import compile_workflow
 
 
@@ -104,6 +116,8 @@ def binding_map(value: Any, context: str) -> dict:
 
 def build_task(value: Any, base: Path, context: str) -> Task:
     data = dict(mapping(value, context))
+    if isinstance(data.get("directory"), dict):
+        data["directory"] = object_from(Directory, data["directory"], f"{context}.directory")
     for name, cls in (("resources", Resources), ("retry", Retry), ("script", Script)):
         if name in data:
             config = dict(mapping(data[name], f"{context}.{name}"))
@@ -132,7 +146,19 @@ def build_task(value: Any, base: Path, context: str) -> Task:
 
 
 def load_yaml(path: str | Path, inputs: dict | None = None) -> dict:
-    """Compile a version-1 static YAML definition into the current workflow spec."""
+    """Compile a version-1 static YAML definition into the current workflow spec.
+
+    Args:
+        path: YAML definition file; literal script/artifact input paths resolve relative to it.
+        inputs: Values for declared workflow inputs; these use common compiler semantics.
+
+    Returns:
+        The same schema-versioned specification produced by compile_workflow.
+
+    Raises:
+        ValueError: YAML syntax, format version, field types, or workflow validation fails.
+        OSError: The definition or a referenced script source cannot be read.
+    """
     source = Path(path).resolve()
     try:
         document = yaml.load(source.read_text(encoding="utf-8"), Loader=DefinitionLoader)
@@ -141,7 +167,7 @@ def load_yaml(path: str | Path, inputs: dict | None = None) -> dict:
     document = mapping(
         document,
         "workflow",
-        {"version", "name", "inputs", "resources", "max_active", "tasks", "nodes", "outputs"},
+        {"version", "name", "inputs", "resources", "max_active", "tasks", "nodes", "outputs", "directory"},
     )
     if type(document.get("version")) is not int or document["version"] != 1:
         raise ValueError("YAML definition requires version: 1")
@@ -168,13 +194,19 @@ def load_yaml(path: str | Path, inputs: dict | None = None) -> dict:
     if limit is not None and (type(limit) is not int or limit < 1):
         raise ValueError("workflow.max_active: expected a positive integer")
     flow = Workflow(document["name"], inputs=tuple(names), resources=resources, max_active=limit)
+    directory = document.get("directory")
+    if isinstance(directory, dict):
+        directory = object_from(Directory, directory, "workflow.directory")
+    flow.directory = directory
     tasks = {
         name: build_task(value, source.parent, f"tasks.{name}")
         for name, value in mapping(document.get("tasks", {}), "tasks").items()
     }
     for name, value in mapping(document.get("nodes"), "nodes").items():
         node = mapping(
-            value, f"nodes.{name}", {"task", "inputs", "after", "resources", "trigger", "finalizer"}
+            value,
+            f"nodes.{name}",
+            {"task", "inputs", "after", "resources", "trigger", "finalizer", "directory"},
         )
         task_name = node.get("task")
         if not isinstance(task_name, str) or task_name not in tasks:
@@ -201,6 +233,9 @@ def load_yaml(path: str | Path, inputs: dict | None = None) -> dict:
             else None,
             trigger=node.get("trigger", "all_success"),
             finalizer=node.get("finalizer", False),
+            directory=object_from(Directory, node["directory"], f"nodes.{name}.directory")
+            if isinstance(node.get("directory"), dict)
+            else node.get("directory"),
         )
     flow.outputs = binding_map(document.get("outputs", {}), "workflow.outputs")
     return compile_workflow(flow, inputs)

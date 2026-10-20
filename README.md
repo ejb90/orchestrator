@@ -14,125 +14,93 @@ resolved configuration, environment setup, commands, and provenance. This is an 
 
 ## Quick start
 
-Requires Python 3.12+ and Linux. Run the bundled examples from this repository root:
+Requires Python 3.12+ and Linux, with Bash, awk, and standard shell utilities. From the repository root:
 
 ```bash
-uv sync
-uv run orchestrator validate examples/diamond.py
-uv run orchestrator plan examples/diamond.py
-uv run orchestrator plan examples/diamond.py --format table
-uv run orchestrator plan examples/diamond.py --tree
-uv run orchestrator run examples/diamond.py --allow-local
+uv sync --locked --group dev
+uv run orchestrator validate examples/sensor_report.yaml
+uv run orchestrator plan examples/sensor_report.yaml --tree
+uv run orchestrator run examples/sensor_report.yaml --allow-local
 ```
 
-For a static text definition, use YAML:
+The workflow cleans sensor measurements and writes a temperature report. It rejects the
+bad and missing readings, retains five measurements, and reports a mean of 20.6 C and
+a range of 18.5–23.0 C. The outputs include both the cleaned CSV and the report file.
+Replace `RUN_ID` below with the identifier printed by `run`:
 
 ```bash
-uv run orchestrator validate examples/script.yaml
-uv run orchestrator run examples/script.yaml --allow-local
+uv run orchestrator logs RUN_ID sensor_report/report
 ```
 
-See [YAML definitions](docs/guide/yaml.md) for reusable tasks, dependencies, inputs, and
-outputs. YAML and Python definitions compile through the same validation pipeline.
-`plan --format table` displays a Rich table of steps, dependencies, control barriers,
-and execution settings without submission; `plan` defaults to JSON.
-`plan --tree` shows dependencies as branches, collapsing scope barriers and marking
-shared prerequisites. Children are prerequisites of their parent; shared nodes run once.
-`tasks` defines reusable work; `nodes` creates named steps using those definitions.
-Each step has its own bindings and attempt history. `{$ref: write.report}` refers to
-the `report` output of the step named `write`.
-
-The diamond produces `{"value": 12}`. Local compute must be explicitly enabled because
-the coordinator host might be an HPC login node. `--max-active 4` is the default global
-concurrency limit. Local CPU counts are informational; runner timeouts are enforced.
-
-More examples:
+The equivalent Python definition runs the same scripts:
 
 ```bash
-uv run orchestrator run examples/nested.py --inputs '{"start": 3}' --allow-local
-uv run orchestrator run examples/branches.py --allow-local
-uv run orchestrator run examples/convergence.py --allow-local
-uv run orchestrator run examples/command.py --allow-local
-uv run orchestrator run examples/staging.py --allow-local
-uv run orchestrator run examples/script.py --allow-local
+uv run orchestrator run examples/sensor_report.py --allow-local
 ```
 
-| Example | Composition | Expected result |
-| --- | --- | --- |
-| `diamond.py` | Seed → two parallel tasks → join | `12` |
-| `nested.py` | Two concurrent child workflows, each with two serial tasks | `24` for start `3` |
-| `branches.py` | Decision → one selected branch → optional-output join | `100` |
-| `convergence.py` | Parent → bounded child loop → finalizer → parent report | Child stops at `4`; parent returns `8` |
-| `command.py` | Argument-list command → validated file artifact | File containing `42` |
-| `script.py` | Multi-command Bash task → retained script and report artifact | Greeting file |
-| `script.yaml` | Static YAML task definition → named write step → workflow output | Greeting file |
-| `staging.py` | Copy input → validate and collect output | Report artifact and line count |
+A second practical workflow summarizes application log messages:
+
+```bash
+uv run orchestrator run examples/log_summary.yaml --allow-local
+```
+
+It writes a report containing six entries, one warning, and two errors. Logged errors
+are input data; the summarization task succeeds. See the [quick start](docs/getting-started/quickstart.md)
+and [practical walkthrough](docs/getting-started/practical-workflows.md) for the source files,
+contracts, expected reports, and inspection commands.
+
+`plan --tree` shows prerequisites as branches; `--format table` shows all dependencies
+and execution settings. The default plan output is JSON. Local compute requires
+`--allow-local`; `--max-active` defaults to four. CPU counts are informational locally.
+
+The detailed [workflow guide](docs/guide/workflows.md) and [DAG gallery](docs/guide/dags.md)
+use the smaller `diamond`, `nested`, `branches`, and `convergence` examples to isolate
+composition and control semantics. The greeting, command, and staging examples also
+remain available for the corresponding detailed guides.
 
 ## Script tasks
 
-```python
-from orchestrator import Script, Task
+The practical examples use retained Bash scripts with explicit file contracts. Each
+attempt captures the source and retains the executed script, staging details, logs, and
+validated results. See [script tasks](docs/guide/scripts.md) for inline/file authoring,
+Bash/Zsh/Fish behavior, environments, and experimental Slurm submission.
 
-report = Task(script=Script(
-    body="mkdir -p results\nprintf hello > results/report.txt",
-    setup="export LC_ALL=C",
-))
-```
+## Python and YAML definitions
 
-Use `Script(path="jobs/report.sh")` for an existing script.
-See [script tasks and Slurm](docs/guide/scripts.md) for file capture, shell behavior,
-environment configuration, scheduler headers, and preview/inspection commands.
-
-## Small Python API example
-
-Put an importable function in `my_tasks.py`:
-
-```python
-def double(value):
-    return {"value": value * 2}
-```
-
-Export `workflow` from `workflow.py`:
-
-```python
-from orchestrator import Task, TaskInput, TaskOutput, Workflow
-
-double = Task(
-    python="my_tasks:double", inputs=[TaskInput("value")], outputs=[TaskOutput("value")]
-)
-workflow = Workflow("demo")
-a = workflow.add("first", double, inputs={"value": 3})
-b = workflow.add("second", double, inputs={"value": a.out("value")})
-workflow.expose(value=b.out("value"))
-```
-
-Run `uv run orchestrator run workflow.py --allow-local`. The result is `12`.
-Output bindings create dependencies automatically. Reusing `double` creates separate
-invocations and attempts, not shared mutable task state.
+The sensor workflow is available as `examples/sensor_report.py` and `examples/sensor_report.yaml`.
+Both compile to the same specification. Reusable tasks define commands and file contracts;
+named steps connect them with input/output bindings. See the
+[practical walkthrough](docs/getting-started/practical-workflows.md) for both versions and
+the [YAML reference](docs/guide/yaml.md) for supported fields.
 
 ## Inspect and recover
+
+The CLI uses Rich Click for colourful, grouped help. Try `uv run orchestrator --help`
+or `uv run orchestrator run -h`. Run states, dependency tables, and trees are styled;
+`NO_COLOR=1` disables colour. JSON, logs, and retained scripts remain plain output.
 
 The CLI prints a run ID before starting. Replace `RUN_ID` below with that ID:
 
 ```bash
 uv run orchestrator status RUN_ID
-uv run orchestrator inspect RUN_ID diamond/left
-uv run orchestrator script RUN_ID yaml_report/write
-uv run orchestrator logs RUN_ID diamond/left
-uv run orchestrator logs RUN_ID diamond/left --stderr --attempt 1
+uv run orchestrator inspect RUN_ID sensor_report/clean
+uv run orchestrator script RUN_ID sensor_report/report
+uv run orchestrator logs RUN_ID sensor_report/clean
+uv run orchestrator logs RUN_ID sensor_report/clean --stderr --attempt 1
 uv run orchestrator events RUN_ID --json
 uv run orchestrator resume RUN_ID
 uv run orchestrator cancel RUN_ID
 ```
 
-Use node IDs belonging to that run: `diamond/left` is from the Python diamond example;
-`yaml_report/write` is from the YAML script example. Retained script inspection applies
-to script tasks.
+These node IDs belong to either sensor-report definition. Script inspection verifies
+and prints the retained job file for the selected step and attempt.
 
 Runs live in `.orchestrator/`. To change storage, put the group option **before** the command:
-`uv run orchestrator --root /durable/local/runs run workflow.py --allow-local`.
+`uv run orchestrator --root /durable/local/runs run examples/sensor_report.yaml --allow-local`.
 Use the same root for inspection and resumption. Keep this directory on durable local
-storage, not a network filesystem.
+storage, not a network filesystem. Task/workflow `directory` settings separately select
+isolated execution bases using absolute, run-root-relative, or parent-relative paths;
+see [execution directories](docs/guide/directories.md).
 
 Ctrl-C stops the coordinator; detached task runners continue. `resume` reconciles those
 attempts and preserves completed work. `cancel` writes a request; a running coordinator
@@ -142,11 +110,14 @@ repeated. See [operations and recovery](docs/guide/operations.md).
 ## Documentation and development
 
 The documentation uses Material for MkDocs with light/dark modes, highlighted code and copy buttons.
-The MkDocs site is organized into getting started, user guide, and reference sections.
+The MkDocs site separates getting started, fundamentals, user guides, and reference.
+Fundamentals explains the philosophy and computer science; contextual Theory boxes in
+the guides are collapsed by default to keep practical instructions easy to follow.
 Run `uv run mkdocs serve` for a local preview, or `uv run mkdocs build --strict` to build `site/`.
 
 - [Documentation home](docs/index.md)
 - [Quick start](docs/getting-started/quickstart.md)
+- [Fundamentals: philosophy and computer science](docs/fundamentals/index.md)
 - [Workflow DAGs and Graphviz sources](docs/guide/dags.md)
 
 - [Workflow composition, with examples](docs/guide/workflows.md)
@@ -155,6 +126,7 @@ Run `uv run mkdocs serve` for a local preview, or `uv run mkdocs build --strict`
 - [Task and artifact contracts](docs/guide/tasks.md)
 - [CLI, run layout, and recovery](docs/guide/operations.md)
 - [Architecture, state transitions, and implementation status](docs/reference/architecture.md)
+- [Generated API reference](docs/reference/api/index.md)
 - [Development checks and GitHub Actions](docs/reference/development.md)
 
 ```bash
@@ -173,3 +145,9 @@ GitHub Actions runs the five checks above (excluding `mkdocs serve`) on pushes a
 requests, with manual runs also available. CI uses Ubuntu 24.04, Python 3.12, uv 0.13.1,
 and `uv sync --locked --group dev`; Bash, Zsh, and Fish are installed so shell tests run.
 CI checks local execution and mocked Slurm behavior; real cluster qualification is pending.
+
+The API reference uses mkdocstrings' Python handler to render classes, functions,
+methods, signatures, annotations, docstrings, and source from `src/` during each build.
+It covers all implementation modules, including private helpers; constructors are merged
+into their class entries. See [documentation development](docs/reference/development.md#api-documentation)
+for adding modules and writing docstrings.

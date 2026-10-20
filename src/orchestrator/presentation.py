@@ -31,7 +31,9 @@ def plan_tree(spec: dict) -> Tree:
         redundant = set().union(*(ancestors[dependency] for dependency in candidates))
         dependencies[name] = candidates - redundant
     prerequisites = set().union(*dependencies.values())
-    root = Tree(Text(spec["root"].removesuffix("/@exit") + " — prerequisites"))
+    root = Tree(
+        Text(spec["root"].removesuffix("/@exit") + " — prerequisites", style="bold cyan"), guide_style="blue"
+    )
     if not visible:
         root.add(Text("(no task or decision nodes)"))
         return root
@@ -43,7 +45,7 @@ def plan_tree(spec: dict) -> Tree:
         node = nodes[name]
         label = f"{name} ({node['kind']})"
         if name in expanded:
-            parent.add(Text(label + " [shared; see above]"))
+            parent.add(Text(label + " [shared; see above]", style="dim"))
             continue
         expanded.add(name)
         if node["finalizer"]:
@@ -52,7 +54,7 @@ def plan_tree(spec: dict) -> Tree:
             label += f" [when {node['when'][0]} = {node['when'][1]}]"
         if node["trigger"] != "all_success":
             label += f" [trigger: {node['trigger']}]"
-        branch = parent.add(Text(label))
+        branch = parent.add(Text(label, style="magenta" if node["kind"] == "decision" else "cyan"))
         stack.extend((dependency, branch) for dependency in sorted(dependencies[name], reverse=True))
     return root
 
@@ -66,7 +68,11 @@ def plan_table(spec: dict) -> Table:
         "Execution / controls",
         title=Text(f"Workflow: {spec['root'].removesuffix('/@exit')}"),
         caption="Dependencies are prerequisites; row order does not imply serial execution.",
+        header_style="bold cyan",
+        border_style="blue",
     )
+    for column in table.columns:
+        column.overflow = "fold"
     pending = set(spec["nodes"])
     seen: set[str] = set()
     while pending:
@@ -86,6 +92,9 @@ def plan_table(spec: dict) -> Table:
                 else:
                     details.append(("Python" if task["python"] else "command") + " / local")
                 details.append(f"CPUs: {task['resources']['cpus']}")
+                if task.get("directory"):
+                    directory = task["directory"]
+                    details.append(f"directory: {directory['relative_to']}:{directory['path']}")
                 if task["resources"]["timeout_seconds"] is not None:
                     details.append(f"Runner timeout: {task['resources']['timeout_seconds']}s")
                 if node["finalizer"]:
@@ -98,12 +107,15 @@ def plan_table(spec: dict) -> Table:
                     scope = spec["scopes"][name.removesuffix("/@enter")]
                     if scope["max_active"] is not None:
                         details.append(f"max active: {scope['max_active']}")
+                    if scope.get("directory"):
+                        directory = scope["directory"]
+                        details.append(f"directory: {directory['relative_to']}:{directory['path']}")
             if node["when"]:
                 details.append(f"when {node['when'][0]} = {node['when'][1]}")
             details.append("trigger: " + node["trigger"])
             table.add_row(
-                Text(name),
-                Text(node["kind"]),
+                Text(name, style="cyan"),
+                Text(node["kind"], style="magenta" if node["kind"] == "decision" else "cyan"),
                 Text("\n".join(sorted(node["deps"])) or "—"),
                 Text("\n".join(details)),
             )

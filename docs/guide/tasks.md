@@ -42,10 +42,12 @@ simulation = Task(
 )
 ```
 
-!!! note "Names and bindings are separate"
+??? info "Theory: Contracts and bindings are separate"
     `TaskInput` and `TaskOutput` describe the reusable task contract. An invocation can
     override input sources through `workflow.add(..., inputs={...})`. `Input("name")`
     still refers to a **workflow's** named input; it is distinct from `TaskInput`.
+
+    See [binding names to data](../fundamentals/definitions.md#binding-connects-names-to-data).
 
 ## Input objects
 
@@ -85,6 +87,14 @@ An input source can also be `producer.out("data")`, `Input("workflow_parameter")
 `Select(...)`. References create dependencies whether supplied on the port or invocation.
 For an optional producer that may fail or be skipped, use `Select` and an appropriate
 trigger; `essential=False` alone does not relax graph dependencies.
+
+??? info "Theory: Values and references have different jobs"
+
+    Small values travel in serialized records; large data travels through filesystem
+    references. A reference describes where the data is and which checks apply. It does
+    not guarantee immutable contents, automatic transport, or a cached scientific result.
+
+    Read more: [Data representation](../fundamentals/contracts.md#small-values-and-artifact-references).
 
 ### Copying and linking
 
@@ -141,6 +151,14 @@ choose unique paths per run/task to avoid collisions.
 Missing optional outputs are absent from the result dictionary. Consume them with
 `Select((task.out("optional"),), default=...)`; a direct reference still requires the output
 at runtime. Explicit `None` is valid for a value output; for an artifact it means absent.
+
+??? info "Theory: Success is a contract, not only an exit code"
+
+    A command may exit successfully without producing the required file. Output contracts
+    let the next step rely on named, validated results. They establish only the properties
+    actually checked; they do not prove scientific correctness or choose workflow branches.
+
+    Read more: [Successful results and contracts](../fundamentals/contracts.md#a-successful-computation-needs-a-usable-result).
 
 ### Validation logic
 
@@ -244,7 +262,8 @@ command-argument templating. See `examples/command.py` for dynamic output manife
 ## Attempts, environments, and resources
 
 Every attempt gets an isolated working directory, original/staged manifests, stdout/stderr,
-runner identity, and terminal result. Custom working directories are deferred. `Task(env=...)`
+runner identity, and terminal result. [Directory settings](directories.md) choose an absolute,
+root-relative, or parent-relative base while retaining attempt isolation. `Task(env=...)`
 extends the inherited environment; Python callables use the coordinator's Python executable.
 Script tasks use their declared shell and support an explicit environment inheritance policy.
 Resolved definitions and sources are persisted, so keep secrets out of them.
@@ -280,7 +299,8 @@ task = Task(
 ```
 
 Workflow input names and invocation binding dictionaries are unchanged. The compiled
-workflow schema is now **version 3**, including captured script definitions. Version 1
+workflow schema is now **version 4**, including captured scripts and directory settings.
+Version 3 runs without directory settings remain supported. Version 1
 and version 2 persisted runs are rejected on resume. The SQLite storage schema remains v1;
 there is no automatic migration. Preserve old runs and use the matching previous code version to
 finish them, or start a deliberate new run with the updated definitions.

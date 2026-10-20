@@ -1,0 +1,6 @@
+2026-10-20T09:00:00 INFO Started processing batch
+2026-10-20T09:00:01 INFO Loaded input files
+2026-10-20T09:00:02 WARN Missing optional calibration file
+2026-10-20T09:00:03 ERROR Sensor north timed out
+2026-10-20T09:00:04 ERROR Sensor west returned invalid data
+2026-10-20T09:00:05 INFO Finished processing batch

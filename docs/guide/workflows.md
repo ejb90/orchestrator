@@ -1,5 +1,9 @@
 # Workflow composition
 
+Start with the [sensor report and log-summary walkthrough](../getting-started/practical-workflows.md)
+for concrete file-processing examples. This guide keeps the smaller arithmetic examples
+to isolate dependencies, nesting, and control behavior.
+
 See the [workflow DAG gallery](dags.md) for visualizations and downloadable `.dot`
 sources corresponding to the runnable examples below.
 
@@ -11,12 +15,19 @@ ordinary Python `if` statements only choose what graph gets built.
 For flat static workflows, [YAML definitions](yaml.md) provide a text format that uses
 the same compiler and execution engine. The examples below demonstrate the Python API.
 
-A **task definition** describes reusable work and its contracts. A **step** (or invocation)
-uses that definition at a named place in a workflow with its own bindings and dependencies.
-Multiple steps may use the same task. Each executed step has its own attempt history;
-retries create additional attempts for that step. In Python, `workflow.add("write", report)`
-creates a step; in YAML, the equivalent is `nodes.write.task: report`. Workflow outputs
-explicitly expose selected step outputs to callers.
+Use `workflow.add("write", report)` to create a named step from a reusable task.
+Bind its inputs and expose selected step outputs through the workflow interface.
+
+??? info "Theory: Definitions, steps, and attempts"
+
+    A **task definition** describes reusable work and its contracts. A **step** (or invocation)
+    uses that definition at a named place in a workflow with its own bindings and dependencies.
+    Multiple steps may use the same task. Each executed step has its own attempt history;
+    retries create additional attempts for that step. In Python, `workflow.add("write", report)`
+    creates a step; in YAML, the equivalent is `nodes.write.task: report`. Workflow outputs
+    explicitly expose selected step outputs to callers.
+
+    Read more: [The identity model](../fundamentals/definitions.md#a-definition-is-not-an-execution).
 
 Names must start with a letter and contain only letters, digits, `_`, or `-`.
 Invocation names must be unique within their workflow. Compiled IDs retain scopes, such
@@ -49,6 +60,14 @@ A cycle is rejected at compilation.
 See `examples/diamond.py`: two independent transformations share a seed, then their
 results feed a join. Parallel eligibility is subject to global and scope limits.
 
+??? info "Theory: Dependency order is partial"
+
+    Output references and `after` create prerequisite edges. Independent steps may overlap,
+    but their order in a Python file or table does not make them serial. A topological
+    ordering is one valid presentation of these constraints, rather than an execution schedule.
+
+    Read more: [Partial orders and concurrency](../fundamentals/graphs.md#a-graph-describes-a-partial-order).
+
 ## Reusable nested workflows
 
 ```python
@@ -70,10 +89,14 @@ right = workflow.add("right", child, inputs={"value": 5})
 workflow.expose(left=left.out("value"), right=right.out("value"))
 ```
 
-Children expand into one graph but keep separate scopes. Callers bind only exposed child
-outputs. A child invocation completes after its children and required finalizers resolve.
-One child finishing early does not close its parent or sibling. Nested workflows themselves
-use no subprocess. The same definition can be invoked repeatedly with different inputs.
+??? info "Theory: Logical scopes and barriers"
+
+    Children expand into one graph but keep separate scopes. Callers bind only exposed child
+    outputs. A child invocation completes after its children and required finalizers resolve.
+    One child finishing early does not close its parent or sibling. Nested workflows themselves
+    use no subprocess. The same definition can be invoked repeatedly with different inputs.
+
+    Read more: [Hierarchy in the graph](../fundamentals/graphs.md#hierarchy-adds-scopes-not-waiting-workers).
 
 `max_active` counts active executable descendants, including descendants of nested children.
 An outer limit and each inner limit must all permit a launch. The global `--max-active`
@@ -105,10 +128,17 @@ join = workflow.add(
 )
 ```
 
-A decision can depend on multiple candidate results. It waits for every declared input,
-so completion order does not change its evidence. Policies run synchronously in the
-coordinator; they should be quick and deterministic and must not submit work or inspect
-mutable external state. Expensive evaluations should be tasks.
+Keep policies quick and deterministic; they run synchronously in the coordinator.
+Put expensive evaluation in a task and pass its result to the policy.
+
+??? info "Theory: Deterministic evidence, independent of arrival order"
+
+    A decision can depend on multiple candidate results. It waits for every declared input,
+    so completion order does not change its evidence. Policies run synchronously in the
+    coordinator; they should be quick and deterministic and must not submit work or inspect
+    mutable external state. Expensive evaluations should be tasks.
+
+    Read more: [Readiness and decision evidence](../fundamentals/graphs.md#readiness-includes-state-and-control-rules).
 
 | Trigger | When dependencies are terminal | Typical use |
 | --- | --- | --- |
@@ -193,6 +223,15 @@ unstarted ordinary work in that scope is skipped. Required finalizers remain eli
 An already-running task or required finalizer that fails still fails the scope. Scope
 completion waits for all descendants; committed decisions cannot be reversed by late results.
 
+??? info "Theory: Bounded loops stay acyclic"
+
+    The finite iterations exist in the compiled graph before execution. Decision barriers
+    prevent a later iteration from starting before its predecessor has decided whether to
+    continue. Successful early completion skips unstarted work rather than changing the graph
+    into a cycle or pretending the remaining tasks ran.
+
+    Read more: [Iteration and scope closure](../fundamentals/graphs.md#loops-can-have-an-acyclic-representation).
+
 ## Finalizers, retries, and combinations
 
 Finalizers are executable tasks with `finalizer=True`, `trigger="all_terminal"`, and
@@ -219,6 +258,15 @@ robust = Task(
 `max_attempts` includes the initial attempt. Each retry gets fresh inputs and a new directory.
 Downstream nodes remain blocked until success or exhausted retries. Retries can duplicate
 external side effects, so task authors must account for that.
+
+??? info "Theory: Retries do not promise exactly-once effects"
+
+    A new attempt isolates files and result identity, but cannot undo an append to a shared
+    file or another external effect from an earlier attempt. Repetition must be idempotent
+    where the application needs it. Resume observes the existing attempt; a confirmed-failure
+    retry authorizes a new one.
+
+    Read more: [Retries, resume, and idempotence](../fundamentals/durability.md#retry-is-different-from-resume).
 
 | Combination | How to build it |
 | --- | --- |

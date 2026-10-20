@@ -1,0 +1,36 @@
+version: 1
+name: sensor_report
+tasks:
+  clean_readings:
+    script:
+      path: jobs/clean_readings.sh
+    inputs:
+      - name: readings
+        kind: file
+        source: data/sensor_readings.csv
+        destination: inputs/readings.csv
+    outputs:
+      - name: readings
+        kind: file
+        source: results/clean.csv
+  temperature_report:
+    script:
+      path: jobs/temperature_report.sh
+    inputs:
+      - name: readings
+        kind: file
+        destination: inputs/clean.csv
+    outputs:
+      - name: summary
+        kind: file
+        source: results/report.txt
+nodes:
+  clean:
+    task: clean_readings
+  report:
+    task: temperature_report
+    inputs:
+      readings: {$ref: clean.readings}
+outputs:
+  clean_csv: {$ref: clean.readings}
+  report: {$ref: report.summary}

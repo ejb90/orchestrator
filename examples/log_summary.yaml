@@ -1,0 +1,20 @@
+version: 1
+name: log_summary
+tasks:
+  summarize_log:
+    script:
+      path: jobs/summarize_log.sh
+    inputs:
+      - name: log
+        kind: file
+        source: data/application.log
+        destination: inputs/application.log
+    outputs:
+      - name: summary
+        kind: file
+        source: results/summary.txt
+nodes:
+  summarize:
+    task: summarize_log
+outputs:
+  report: {$ref: summarize.summary}

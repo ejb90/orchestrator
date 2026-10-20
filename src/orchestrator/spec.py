@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from .api import Input, Ref, Resources, Select, Task, TaskInput, TaskOutput, Workflow
+from .paths import directory_spec, validate_directory
 
-VERSION = 3
+VERSION = 4
 NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 
 
@@ -34,6 +35,19 @@ def references(value: Any) -> list[dict]:
 
 
 def compile_workflow(flow: Workflow, inputs: dict | None = None) -> dict:
+    """Expand and validate a workflow as a deterministic, JSON-compatible specification.
+
+    Args:
+        flow: Root workflow builder; nested workflows expand into hierarchical node IDs.
+        inputs: Bindings for all declared root workflow inputs.
+
+    Returns:
+        A schema-versioned dictionary containing expanded nodes, scopes, and the root exit.
+        Script sources are captured; application commands are not executed.
+
+    Raises:
+        ValueError: Definitions, bindings, dependencies, resources, or script contracts are invalid.
+    """
     nodes: dict[str, dict] = {}
     scopes: dict[str, dict] = {}
     visiting: set[int] = set()
@@ -48,6 +62,7 @@ def compile_workflow(flow: Workflow, inputs: dict | None = None) -> dict:
         guard: list | None,
         trigger: str,
         finalizer: bool,
+        directory_override=None,
     ) -> str:
         if id(wf) in visiting:
             raise ValueError("Recursive workflow definition")
@@ -102,6 +117,9 @@ def compile_workflow(flow: Workflow, inputs: dict | None = None) -> dict:
         scopes[prefix] = dict(
             parent=parent, entry=entry, exit=exit_id, max_active=wf.max_active, outputs=bind(wf.outputs)
         )
+        scopes[prefix]["directory"] = directory_spec(
+            directory_override if directory_override is not None else wf.directory
+        )
         for invocation in wf.nodes:
             node_id = prefix + "/" + invocation.id
             effective = dict(invocation.inputs)
@@ -147,6 +165,7 @@ def compile_workflow(flow: Workflow, inputs: dict | None = None) -> dict:
                     when,
                     invocation.trigger,
                     invocation.finalizer,
+                    invocation.directory,
                 )
                 continue
             definition = invocation.definition
@@ -159,6 +178,9 @@ def compile_workflow(flow: Workflow, inputs: dict | None = None) -> dict:
                 for port in task["inputs"]:
                     port["source"] = args.get(port["name"])
                 task["resources"] = asdict(invocation.resources or definition.resources or resolved)
+                task["directory"] = directory_spec(
+                    invocation.directory if invocation.directory is not None else definition.directory
+                )
             nodes[node_id] = dict(
                 kind="task" if task else "decision",
                 scope=prefix,
@@ -218,8 +240,16 @@ def guard_set(node: dict, spec: dict) -> set[tuple[str, str]]:
 
 
 def validate(spec: dict) -> None:
-    if spec.get("schema_version") != VERSION:
+    if spec.get("schema_version") not in (3, VERSION):
         raise ValueError("Unsupported workflow schema version")
+    directories = [scope.get("directory") for scope in spec["scopes"].values()]
+    directories += [
+        node["task"].get("directory") for node in spec["nodes"].values() if node["kind"] == "task"
+    ]
+    for directory in directories:
+        validate_directory(directory)
+    if spec["schema_version"] == 3 and any(directory is not None for directory in directories):
+        raise ValueError("Directory configuration requires workflow schema version 4")
     nodes = spec["nodes"]
     pending = set(nodes)
     seen: set[str] = set()

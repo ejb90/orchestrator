@@ -90,17 +90,29 @@ Each attempt retains:
 | `input.json`, `staged-inputs.json` | Original and staged bindings |
 | `stdout.log`, `stderr.log`, `result.json` | Logs and managed outcome |
 
-The top-level script invokes the installed Python runner explicitly. The runner stages
-inputs once and calls that same script with `--application`; this internal argument
-selects the environment/setup/application section. It then validates and collects
-outputs and publishes the result. Do not call `--application` yourself: it bypasses the
-managed lifecycle. Re-running an old managed job manually is also unsupported because
-its attempt identity and publication paths are already used. Create a new run instead.
+Do not call the internal `--application` argument yourself: it bypasses the managed
+lifecycle. To execute again, create a new run rather than manually re-running a retained job.
 
-The script records the Python interpreter and import paths required for its lifecycle
-helper. Dependencies, module systems, and sourced setup files remain external; they are
-not provisioned or snapshotted automatically. Small value outputs can still be written
-as JSON to `ORCHESTRATOR_OUTPUTS`; file outputs can use static `TaskOutput.source` paths.
+??? info "Theory: A visible worker lifecycle"
+
+    The top-level script invokes the installed runner, which stages inputs once and calls
+    the same script with `--application` to execute its environment and application section.
+    It validates/collects outputs and publishes the result; the coordinator then owns the
+    orchestration decision. Application status and publication are distinct observations.
+
+    Read more: [The execution boundary](../fundamentals/contracts.md#scripts-make-the-execution-boundary-visible).
+
+Application dependencies, module systems, and sourced setup files must be available
+on the execution host. Small value outputs can be written to `ORCHESTRATOR_OUTPUTS`;
+file outputs can use static `TaskOutput.source` paths.
+
+??? info "Theory: Recorded provenance has a boundary"
+
+    Retaining the script, interpreter path, and specification digest makes commands
+    inspectable. It does not install or snapshot packages, sourced files, inherited values,
+    or dataset contents. Reproducibility requires managing those external dependencies too.
+
+    Read more: [Provenance and reproducibility](../fundamentals/philosophy.md#make-reproducibility-explicit).
 
 ## Shells and environments
 
@@ -174,7 +186,7 @@ on compute nodes at the recorded absolute locations. No data transport is provid
 
     This adapter has mocked scheduler tests, not a real-cluster qualification. It supports
     a single cluster and shared filesystem. Site profiles, hierarchical Slurm overrides,
-    separate database/artifact roots, accounting-based reconciliation, and job discovery
+    accounting-based reconciliation, and job discovery
     after a lost acknowledgement remain future work. Qualify filesystem locking and
     durability on the single coordinator host before deployment; do not assume an arbitrary
     network filesystem is suitable for SQLite.
@@ -183,6 +195,10 @@ on compute nodes at the recorded absolute locations. No data transport is provid
     `uncertain`, including scheduler kills where the runner cannot publish a result.
     It is never automatically resubmitted. `resume` can accept a later valid result;
     it cannot yet recover a lost job ID through scheduler accounting.
+
+Task/workflow [directory bases](directories.md) can separate attempt storage from local
+SQLite. The retained Slurm header uses each attempt's resolved working and log paths;
+both the coordinator and compute nodes must access those same locations.
 
 ## Example workflow DAG
 
