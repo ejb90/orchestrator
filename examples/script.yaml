@@ -1,0 +1,19 @@
+version: 1
+name: yaml_report
+tasks:
+  report:
+    script:
+      body: |
+        mkdir -p results
+        printf '%s\n' "$GREETING" > results/report.txt
+    env:
+      GREETING: Hello from a YAML workflow
+    outputs:
+      - name: report
+        kind: file
+        source: results/report.txt
+nodes:
+  write:
+    task: report
+outputs:
+  report: {$ref: write.report}

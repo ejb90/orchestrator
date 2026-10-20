@@ -1,0 +1,59 @@
+site_name: Orchestrator
+site_description: Python-first local workflow orchestration
+docs_dir: docs
+site_dir: site
+theme:
+  name: material
+  font: false
+  icon:
+    logo: material/graph-outline
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.details
+extra_css:
+  - assets/stylesheets/extra.css
+nav:
+  - Home: index.md
+  - Getting started:
+      - Quick start: getting-started/quickstart.md
+  - User guide:
+      - Workflow combinations: guide/workflows.md
+      - YAML definitions: guide/yaml.md
+      - Workflow DAGs: guide/dags.md
+      - Script tasks and Slurm: guide/scripts.md
+      - Tasks and artifacts: guide/tasks.md
+      - Operations and recovery: guide/operations.md
+  - Reference:
+      - Architecture and status: reference/architecture.md
+      - Development and CI: reference/development.md

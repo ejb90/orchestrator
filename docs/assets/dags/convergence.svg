@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="1870" viewBox="0 0 380 1870" role="img" aria-labelledby="title desc">
+<title id="title">Convergence workflow</title>
+<desc id="desc">Workflow dependency graph. Task nodes are blue, decisions yellow, scope boundaries grey, and finalizers green.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="380" height="1870" fill="white"/>
+<text x="190.0" y="25" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#0f172a">Convergence workflow</text>
+<path d="M 190.0 1714 L 190.0 1747" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 114 L 190.0 147" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 1514 L 190.0 1547" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 314 L 190.0 347" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 514 L 190.0 547" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 714 L 190.0 747" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 914 L 190.0 947" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 1114 L 190.0 1147" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 1314 L 190.0 1347" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 1414 L 190.0 1447" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 214 L 190.0 247" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 414 L 190.0 447" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 614 L 190.0 647" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 814 L 190.0 847" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 1014 L 190.0 1047" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 1214 L 190.0 1247" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 1614 L 190.0 1647" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="30.0" y="50" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="190.0" y="76" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/@enter</text>
+<text x="190.0" y="97" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">enter</text>
+<rect x="30.0" y="1750" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="190.0" y="1776" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/@exit</text>
+<text x="190.0" y="1797" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">exit</text>
+<rect x="30.0" y="150" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="190.0" y="176" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/@enter</text>
+<text x="190.0" y="197" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">enter</text>
+<rect x="30.0" y="1550" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="190.0" y="1576" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/@exit</text>
+<text x="190.0" y="1597" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">exit</text>
+<rect x="30.0" y="350" width="320" height="64" rx="8" fill="#fef3c7" stroke="#64748b"/>
+<text x="190.0" y="376" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/check_1</text>
+<text x="190.0" y="397" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">decision</text>
+<rect x="30.0" y="550" width="320" height="64" rx="8" fill="#fef3c7" stroke="#64748b"/>
+<text x="190.0" y="576" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/check_2</text>
+<text x="190.0" y="597" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">decision</text>
+<rect x="30.0" y="750" width="320" height="64" rx="8" fill="#fef3c7" stroke="#64748b"/>
+<text x="190.0" y="776" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/check_3</text>
+<text x="190.0" y="797" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">decision</text>
+<rect x="30.0" y="950" width="320" height="64" rx="8" fill="#fef3c7" stroke="#64748b"/>
+<text x="190.0" y="976" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/check_4</text>
+<text x="190.0" y="997" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">decision</text>
+<rect x="30.0" y="1150" width="320" height="64" rx="8" fill="#fef3c7" stroke="#64748b"/>
+<text x="190.0" y="1176" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/check_5</text>
+<text x="190.0" y="1197" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">decision</text>
+<rect x="30.0" y="1350" width="320" height="64" rx="8" fill="#fef3c7" stroke="#64748b"/>
+<text x="190.0" y="1376" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/check_6</text>
+<text x="190.0" y="1397" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">decision</text>
+<rect x="30.0" y="1450" width="320" height="64" rx="8" fill="#dcfce7" stroke="#64748b"/>
+<text x="190.0" y="1476" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/cleanup</text>
+<text x="190.0" y="1497" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">finalizer</text>
+<rect x="30.0" y="250" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="276" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/step_1</text>
+<text x="190.0" y="297" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="450" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="476" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/step_2</text>
+<text x="190.0" y="497" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="650" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="676" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/step_3</text>
+<text x="190.0" y="697" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="850" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="876" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/step_4</text>
+<text x="190.0" y="897" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="1050" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="1076" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/step_5</text>
+<text x="190.0" y="1097" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="1250" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="1276" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/optimize/step_6</text>
+<text x="190.0" y="1297" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="1650" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="1676" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">experiment/report</text>
+<text x="190.0" y="1697" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+</svg>

@@ -1,0 +1,2 @@
+A small input file staged into an isolated task directory.
+Copy mode protects the original from task-local edits.

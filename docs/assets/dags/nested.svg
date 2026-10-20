@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="870" viewBox="0 0 720 870" role="img" aria-labelledby="title desc">
+<title id="title">Nested workflow</title>
+<desc id="desc">Workflow dependency graph. Task nodes are blue, decisions yellow, scope boundaries grey, and finalizers green.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="720" height="870" fill="white"/>
+<text x="360.0" y="25" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#0f172a">Nested workflow</text>
+<path d="M 360.0 714 L 360.0 747" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 614 L 360.0 647" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 530.0 614 L 360.0 647" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 360.0 214 L 190.0 247" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 514 L 190.0 547" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 314 L 190.0 347" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 190.0 414 L 190.0 447" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 360.0 214 L 530.0 247" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 530.0 514 L 530.0 547" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 530.0 314 L 530.0 347" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 530.0 414 L 530.0 447" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 360.0 114 L 360.0 147" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="200.0" y="50" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="360.0" y="76" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/@enter</text>
+<text x="360.0" y="97" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">enter</text>
+<rect x="200.0" y="750" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="360.0" y="776" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/@exit</text>
+<text x="360.0" y="797" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">exit</text>
+<rect x="200.0" y="650" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="360.0" y="676" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/join</text>
+<text x="360.0" y="697" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="250" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="190.0" y="276" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/left/@enter</text>
+<text x="190.0" y="297" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">enter</text>
+<rect x="30.0" y="550" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="190.0" y="576" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/left/@exit</text>
+<text x="190.0" y="597" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">exit</text>
+<rect x="30.0" y="350" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="376" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/left/first</text>
+<text x="190.0" y="397" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="30.0" y="450" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="190.0" y="476" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/left/second</text>
+<text x="190.0" y="497" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="370.0" y="250" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="530.0" y="276" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/right/@enter</text>
+<text x="530.0" y="297" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">enter</text>
+<rect x="370.0" y="550" width="320" height="64" rx="8" fill="#e2e8f0" stroke="#64748b"/>
+<text x="530.0" y="576" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/right/@exit</text>
+<text x="530.0" y="597" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">exit</text>
+<rect x="370.0" y="350" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="530.0" y="376" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/right/first</text>
+<text x="530.0" y="397" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="370.0" y="450" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="530.0" y="476" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/right/second</text>
+<text x="530.0" y="497" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+<rect x="200.0" y="150" width="320" height="64" rx="8" fill="#dbeafe" stroke="#64748b"/>
+<text x="360.0" y="176" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">nested/seed</text>
+<text x="360.0" y="197" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#334155">task</text>
+</svg>

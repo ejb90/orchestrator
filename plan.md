@@ -18,6 +18,17 @@ This document records the accepted architectural direction and provides implemen
 
 Implementation status (20 October 2026): `Task(script=Script(...))` now supports captured inline/file sources, Bash/Zsh/Fish rendering, environment setup, per-attempt retained job files and hashes, the existing staging/validation lifecycle, and CLI render/script inspection. Schema v3 records script definitions. An experimental shared-filesystem Slurm adapter submits the retained file and observes/cancels jobs; scheduler tests are mocked, not cluster-qualified. Argument-list and Python tasks remain supported. Site profiles, hierarchical scheduler overrides, accounting/lost-ack discovery, separate storage roots, dependency snapshots, and real cluster qualification remain pending. Fish uses explicit authored failure checks because it has no Bash-style errexit; see `docs/guide/scripts.md` for implemented semantics and limits. The sections below retain the broader target design where these items are not yet implemented.
 
+Documentation status (20 October 2026): the user guides now cover Python and YAML
+entry points, reusable task definitions versus named steps, workflow output bindings,
+script preview/inspection, source capture, environment behavior, path resolution, and
+current Slurm recovery limits. The task-contract migration section is corrected to
+workflow schema v3 (SQLite v1); YAML authoring version 1 is explained separately.
+The documentation home, quick start, README, and navigation link the YAML and new
+development/CI guides. CI setup and remaining hosted/cluster qualification are documented.
+Verification: the strict MkDocs build passes, all three YAML guide examples compile and
+execute successfully (including reuse with isolated outputs), and the documented five
+CI commands match the workflow file.
+
 ## 2. Initial scope
 
 The first release supports:
@@ -34,7 +45,7 @@ The first release supports:
 - A CLI for validation, planning, execution, inspection, logs, cancellation, and resumption.
 - Structured events, diagnostic logs, task output, and provenance.
 
-Deferred features include YAML authoring, arbitrary dynamic graph expansion, unbounded loops, pilot allocations, job-array optimization, multi-cluster execution, distributed coordinators, caching across runs, a web interface, and automatic data staging between unrelated filesystems.
+Basic YAML authoring is implemented for flat static graphs. Advanced YAML composition (nested workflows, decisions, and iteration), arbitrary dynamic graph expansion, unbounded loops, pilot allocations, job-array optimization, multi-cluster execution, distributed coordinators, caching across runs, a web interface, and automatic data staging between unrelated filesystems remain deferred.
 
 The architecture must accommodate these features without pretending they are already supported.
 
@@ -80,7 +91,7 @@ The data flow is:
 ```text
 Python builder ──┐
                 ├── WorkflowSpec → validation → compiled graph → coordinator
-Future YAML ────┘
+YAML v1 ────────┘
 ```
 
 The builder creates data structures and performs no submission. Python may generate repeated structures at definition time. Runtime conditions must use explicit control constructs rather than ordinary Python branching over unfinished results.
@@ -340,6 +351,8 @@ Proposed CLI commands, using a placeholder executable name:
 ```text
 orchestrator validate workflow.py
 orchestrator plan workflow.py
+orchestrator plan workflow.py --format table
+orchestrator plan workflow.py --tree
 orchestrator render workflow.py --output preview/
 orchestrator run workflow.py
 orchestrator status RUN_ID
@@ -354,6 +367,30 @@ orchestrator events RUN_ID --json
 Use Click and Rich for commands and presentation. Provide stable machine-readable output independently of terminal formatting. Planning should expose the expanded graph, resolved resources, and control barriers without submission. CLI syntax remains provisional until the Python API and loading mechanism are defined.
 
 The implemented `render` command previews scripts with preview identities/paths without submission; `script` verifies and prints the exact stored file for an existing attempt. Preview files are not runnable managed attempts. Inspection should also expose script/source digests, interpreter, submission arguments, and environment provenance. Documentation examples should lead with multi-command scripts, including local Bash, shell-specific Zsh/Fish examples once supported, and a self-describing Slurm JCF.
+
+Implemented visualization (20 October 2026): `plan FILE --format table` displays a
+Rich table for Python and YAML workflows. It includes every expanded node and direct
+dependency in deterministic topological order, hierarchical IDs, scope enter/exit barriers,
+task form/backend, generic CPU/timeout settings, explicit Slurm settings, scope concurrency
+limits, branch guards, triggers, and required finalizers. This is a static view without
+submission; row order does not impose serial execution. `plan FILE` retains its JSON
+default, with `--format json` also supported. Terminal table documentation and coverage
+for diamond dependencies, nesting, conditions, finalizers, YAML, literal formatting, and
+unchanged JSON/no-submission behavior accompany the implementation.
+Verification passed: 126 tests, Ruff lint/format checks, mypy, and the strict MkDocs build.
+
+Tree visualization update (20 October 2026): `plan FILE --tree` (equivalently
+`--format tree`) now renders prerequisites as Rich tree branches for Python and YAML.
+Children are prerequisites of their parent. Scope barriers and redundant transitive
+edges are collapsed while preserving dependency reachability; full hierarchical IDs,
+decisions, branch guards, non-default triggers, and required finalizers remain visible.
+Shared prerequisites expand once and are marked on later appearances, rather than
+implying duplicate execution. Independent sinks form separate top-level branches.
+JSON remains the default; the table and JSON retain every direct dependency/barrier.
+Coverage includes diamond sharing, dependencies through nested scopes, YAML CLI behavior,
+conflicting output options, control labels, and empty workflows. Documentation includes
+the tree command and its direction/summary semantics.
+Verification passed: 130 tests, Ruff lint/format checks, mypy, and the strict MkDocs build.
 
 ## 13. Package and engineering structure
 
@@ -393,6 +430,44 @@ Implement milestones in order. Other models should receive the relevant contract
 | 6. Usability and release | CLI including script preview/inspection, Material for MkDocs documentation, script-first examples, DAG diagrams, provenance, packaging | A new user can inspect a self-describing script, run locally, configure a site, run on Slurm, interrupt/resume, and diagnose a failed task from its retained JCF, logs, and manifests. |
 
 Each milestone should include its own documentation and meaningful tests; milestone 6 consolidates the user experience rather than postponing documentation until the end.
+
+### Development tooling update (20 October 2026)
+
+Milestone 6 now includes a GitHub Actions workflow for pushes, pull requests, and manual
+runs. It uses Ubuntu 24.04, Python 3.12, uv 0.13.1, and locked development dependencies;
+installs Bash/Zsh/Fish support; and runs Ruff lint, Ruff format checking, mypy, pytest,
+and the strict MkDocs build. The operations guide now documents workflow schema v3
+(SQLite schema remains v1) and retained script/source/metadata files in each script attempt.
+The README and architecture status describe this CI coverage.
+
+Local verification passed: 87 tests with Bash, Zsh, and Fish available, Ruff lint and
+format checks, mypy, the strict documentation build, and workflow YAML parsing.
+
+The workflow is configured; a successful hosted run remains to be verified after the
+files are committed and pushed to GitHub. CI does not establish Slurm cluster compatibility.
+Resource precedence, scheduler polling/backoff, separate storage roots, and Slurm
+accounting/lost-ack reconciliation remain pending development work.
+
+### Static YAML input update (20 October 2026)
+
+YAML format v1 now supports reusable script/argument-list/Python task definitions,
+flat dependency graphs, named workflow inputs and output references, object-based I/O
+contracts, task/invocation resources, retries, concurrency limits, and required finalizers.
+The `.yaml`/`.yml` CLI route and public `load_yaml` entry point construct the existing
+Python builders and use the same compiler, schema v3, validation, and runtime. YAML is
+an authoring frontend, not a separate execution engine or a new persisted schema.
+
+Parsing uses PyYAML's safe loader with duplicate-key and alias rejection; unknown fields,
+invalid types, and non-JSON values fail before execution. Literal artifact input paths and
+script files resolve relative to the definition file. Documentation and a runnable script
+example accompany coverage for Python/YAML specification equivalence, local execution,
+CLI planning/rendering/resumption, path resolution and source capture, retry/finalizer
+behavior, and malformed definitions. YAML includes, templating, nested workflows, decisions,
+branch selection, and bounded iteration remain deferred; use the Python API for those controls.
+
+Verification: the full local test suite, Ruff lint/format checks, mypy, the strict MkDocs
+build, and offline lockfile consistency checks pass. PyYAML is now an explicit runtime
+dependency, using its existing locked version rather than relying on the documentation tools.
 
 ## 15. Verification strategy
 
