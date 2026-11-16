@@ -19,11 +19,17 @@ class RendererTests(unittest.TestCase):
             }
         )
 
-        rendered = {str(file.relative_path): file.content for file in ScriptRenderer().render(workflow)}
+        rendered = {
+            str(file.relative_path): file.content
+            for file in ScriptRenderer().render(workflow)
+        }
 
         self.assertIn("example/run.sh", rendered)
         self.assertIn("example/01-first.sh", rendered)
-        self.assertIn("orchestrator mediate --workflow Example --task First", rendered["example/01-first.sh"])
+        self.assertIn(
+            "orchestrator mediate --workflow Example --task First",
+            rendered["example/01-first.sh"],
+        )
         self.assertIn("should_continue || exit 1", rendered["example/run.sh"])
 
     def test_renders_nested_parallel_workflow(self) -> None:
@@ -43,7 +49,10 @@ class RendererTests(unittest.TestCase):
             }
         )
 
-        rendered = {str(file.relative_path): file.content for file in ScriptRenderer().render(workflow)}
+        rendered = {
+            str(file.relative_path): file.content
+            for file in ScriptRenderer().render(workflow)
+        }
 
         self.assertIn("outer/01-inner-task/inner/run.sh", rendered)
         self.assertIn(
@@ -65,7 +74,10 @@ class RendererTests(unittest.TestCase):
             }
         )
 
-        rendered = {str(file.relative_path): file.content for file in ScriptRenderer(RenderTarget.SLURM).render(workflow)}
+        rendered = {
+            str(file.relative_path): file.content
+            for file in ScriptRenderer(RenderTarget.SLURM).render(workflow)
+        }
 
         self.assertIn("#SBATCH --job-name=compute", rendered["cluster/01-compute.sh"])
         self.assertIn("#SBATCH --time=00:10:00", rendered["cluster/01-compute.sh"])

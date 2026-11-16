@@ -21,7 +21,7 @@ class Task:
 
     name: str
     command: str | None = None
-    workflow: "Workflow | None" = None
+    workflow: Workflow | None = None
     slurm: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -41,7 +41,9 @@ class Task:
         if slurm is None:
             slurm = {}
         if not isinstance(slurm, dict):
-            raise ValueError(f"task {data.get('name')!r} slurm options must be a mapping")
+            raise ValueError(  # noqa: TRY004 - Preserve the workflow validation API.
+                f"task {data.get('name')!r} slurm options must be a mapping"
+            )
         return cls(
             name=str(data["name"]),
             command=str(command) if command is not None else None,
@@ -68,7 +70,7 @@ class Workflow:
     def from_mapping(cls, data: dict[str, Any]) -> Self:
         tasks = data.get("tasks", [])
         if not isinstance(tasks, list):
-            raise ValueError(f"workflow {data.get('name')!r} tasks must be a list")
+            raise ValueError(f"workflow {data.get('name')!r} tasks must be a list")  # noqa: TRY004
         return cls(
             name=str(data["name"]),
             mode=ExecutionMode(str(data.get("mode", ExecutionMode.SERIAL))),
@@ -82,5 +84,5 @@ class Workflow:
         with Path(path).open(encoding="utf-8") as handle:
             data = json.load(handle)
         if not isinstance(data, dict):
-            raise ValueError("workflow JSON root must be an object")
+            raise ValueError("workflow JSON root must be an object")  # noqa: TRY004
         return cls.from_mapping(data)

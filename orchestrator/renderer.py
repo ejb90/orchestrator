@@ -78,7 +78,10 @@ class ScriptRenderer:
         return workflow_script
 
     def _workflow_script(
-        self, workflow: Workflow, workflow_dir: Path, task_scripts: list[tuple[Task, Path]]
+        self,
+        workflow: Workflow,
+        workflow_dir: Path,
+        task_scripts: list[tuple[Task, Path]],
     ) -> str:
         lines = [
             "#!/usr/bin/env bash",
@@ -117,9 +120,9 @@ class ScriptRenderer:
                     "",
                     "status=0",
                     f"for pid in {' '.join(pids)}; do",
-                    "  wait \"$pid\" || status=$?",
+                    '  wait "$pid" || status=$?',
                     "done",
-                    "exit \"$status\"",
+                    'exit "$status"',
                     "",
                 ]
             )
@@ -155,8 +158,10 @@ class ScriptRenderer:
                 command,
                 "} || status=$?",
                 "",
-                f"{mediator} --workflow {quoted_workflow} --task {quoted_task} "
-                '--status "$status" --state-dir "$STATE_DIR"',
+                (
+                    f"{mediator} --workflow {quoted_workflow} --task {quoted_task} "
+                    '--status "$status" --state-dir "$STATE_DIR"'
+                ),
                 'mediate_status="$?"',
                 'if [[ "$status" -ne 0 ]]; then',
                 '  exit "$status"',

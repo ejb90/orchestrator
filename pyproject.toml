@@ -1,12 +1,16 @@
 [project]
 name = "orchestrator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Script-building workflow orchestrator for bash and Slurm"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
 [dependency-groups]
+dev = [
+    "ruff>=0.17.5",
+    "ty>=0.0.104",
+]
 docs = [
     "mkdocs>=1.6.0",
 ]
