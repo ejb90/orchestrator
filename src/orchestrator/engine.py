@@ -261,7 +261,7 @@ class Coordinator:
         if script_record:
             manifest["execution_script"] = script_record
         atomic_json(directory / "input.json", manifest)
-        attempt = dict(
+        attempt: dict[str, Any] = dict(
             id=attempt_id,
             path=relative,
             working_directory=str(directory),

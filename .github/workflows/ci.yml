@@ -40,6 +40,8 @@ jobs:
         run: uv run --locked ruff format --check src tests examples scripts
       - name: Type check
         run: uv run --locked mypy
+      - name: Type check with ty
+        run: uv run --locked ty check src/orchestrator
       - name: Test
         run: uv run --locked pytest
       - name: Build documentation
